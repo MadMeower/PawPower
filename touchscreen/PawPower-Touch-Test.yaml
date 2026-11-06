@@ -1,0 +1,220 @@
+# USB-only hardware test for Waveshare ESP32-S3-Touch-LCD-4.3B-BOX.
+# This does not include the battery bridge, UART polling, or CAN output.
+substitutions:
+  name: pawpower-screen-test
+  friendly_name: Paw Power Screen Test
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.10.2
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  level: DEBUG
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret shunt_api_key
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+safe_mode:
+
+i2c:
+  id: panel_i2c
+  sda: GPIO8
+  scl: GPIO9
+  scan: true
+
+ch422g:
+  - id: panel_io
+    i2c_id: panel_i2c
+
+# Explicit Type-B LCD pin map; do not substitute the old bridge's UART pins.
+display:
+  - platform: mipi_rgb
+    # ESPHome RGB preset matches the documented Type-B LCD signal pins.
+    model: ESP32-S3-TOUCH-LCD-4.3
+    id: panel_display
+    dimensions:
+      width: 800
+      height: 480
+    color_order: RGB
+    pclk_frequency: 16MHz
+    pclk_inverted: true
+    de_pin: GPIO5
+    hsync_pin:
+      number: GPIO46
+      ignore_strapping_warning: true
+    vsync_pin:
+      number: GPIO3
+      ignore_strapping_warning: true
+    pclk_pin: GPIO7
+    enable_pin:
+      ch422g: panel_io
+      number: 2
+      mode: OUTPUT
+    hsync_back_porch: 30
+    hsync_front_porch: 210
+    hsync_pulse_width: 30
+    vsync_back_porch: 4
+    vsync_front_porch: 4
+    vsync_pulse_width: 4
+    data_pins:
+      red: [GPIO1, GPIO2, GPIO42, GPIO41, GPIO40]
+      green: [GPIO39, GPIO0, GPIO45, GPIO48, GPIO47, GPIO21]
+      blue: [GPIO14, GPIO38, GPIO18, GPIO17, GPIO10]
+    auto_clear_enabled: false
+    update_interval: never
+
+touchscreen:
+  - platform: gt911
+    id: panel_touch
+    i2c_id: panel_i2c
+    display: panel_display
+    interrupt_pin: GPIO4
+    reset_pin:
+      ch422g: panel_io
+      number: 1
+      mode: OUTPUT
+    on_touch:
+      - lambda: |-
+          ESP_LOGI("paw_touch", "Touch x=%d y=%d", touch.x, touch.y);
+
+globals:
+  - id: touch_count
+    type: unsigned int
+    restore_value: false
+    initial_value: '0'
+
+lvgl:
+  displays:
+    - panel_display
+  touchscreens:
+    - panel_touch
+  buffer_size: 25%
+  default_font: montserrat_20
+  pages:
+    - id: test_page
+      bg_color: 0x0C141E
+      pad_all: 0
+      widgets:
+        - label:
+            text: Paw Power
+            x: 160
+            y: 45
+            width: 550
+            height: 55
+            text_font: montserrat_40
+            text_color: 0xF1F6FB
+        - obj:
+            x: 56
+            y: 40
+            width: 84
+            height: 84
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 0
+            widgets:
+              - obj:
+                  x: 2
+                  y: 21
+                  width: 17
+                  height: 23
+                  radius: 20
+                  bg_color: 0x61E4AA
+                  border_width: 0
+              - obj:
+                  x: 22
+                  y: 2
+                  width: 17
+                  height: 25
+                  radius: 20
+                  bg_color: 0x61E4AA
+                  border_width: 0
+              - obj:
+                  x: 45
+                  y: 2
+                  width: 17
+                  height: 25
+                  radius: 20
+                  bg_color: 0x61E4AA
+                  border_width: 0
+              - obj:
+                  x: 65
+                  y: 21
+                  width: 17
+                  height: 23
+                  radius: 20
+                  bg_color: 0x61E4AA
+                  border_width: 0
+              - obj:
+                  x: 20
+                  y: 35
+                  width: 46
+                  height: 40
+                  radius: 25
+                  bg_color: 0x61E4AA
+                  border_width: 0
+              - line:
+                  x: 29
+                  y: 36
+                  points:
+                    - 23, 0
+                    - 5, 20
+                    - 23, 20
+                    - 7, 39
+                  line_color: 0xFFD23F
+                  line_width: 6
+        - label:
+            text: "800 x 480 | Display and touch test"
+            x: 60
+            y: 150
+            width: 680
+            height: 35
+            text_color: 0xA2B5C5
+        - button:
+            x: 160
+            y: 225
+            width: 480
+            height: 110
+            bg_color: 0x186B54
+            radius: 18
+            widgets:
+              - label:
+                  text: Tap for paw power!
+                  align: CENTER
+                  text_color: 0xFFFFFF
+            on_click:
+              - lambda: 'id(touch_count)++;'
+              - lvgl.label.update:
+                  id: tap_result
+                  text:
+                    format: "Touch works! Taps: %u"
+                    args: [ 'id(touch_count)' ]
+        - label:
+            id: tap_result
+            text: Waiting for a tap...
+            x: 80
+            y: 375
+            width: 640
+            height: 40
+            text_align: CENTER
+            text_color: 0xFFD23F
