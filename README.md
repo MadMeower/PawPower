@@ -11,6 +11,7 @@ An ESP32-S3 reads the shunt over RS485, serves a local battery dashboard, and se
 - Shows voltage, signed current, power, remaining Ah, SOC, and battery-probe temperature.
 - Displays shunt/calculated runtime estimates and time to full.
 - Records daily charged/discharged kWh, daily peaks, and disconnect history.
+- Shows a compact seasonal daylight-cycle guide with a solstice countdown.
 - Provides authenticated web settings, saved in flash.
 - Reports capacity and configurable charge/discharge limits through legacy Pylontech-style CAN.
 - Offers SOC charge stop/resume, low-voltage discharge control, and configurable cold/hot charge cutoffs with hysteresis. The webpage shows temperature settings in °F.

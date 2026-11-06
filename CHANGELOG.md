@@ -1,5 +1,13 @@
 # Changelog
 
+## Chasing the Sun — 2026-11-05
+
+- Added a compact annual seasonal dial, countdown and daylight-direction label below battery energy totals.
+- Uses the browser clock and America/Detroit calendar date, independently of shunt/CAN status. Updates on date changes without an external service.
+- Calendar guide uses June 21 / December 21, explicitly approximate; it is not astronomical timing or a PV forecast.
+- Added Node regression checks for turnarounds, year rollover, leap years, marker placement and Michigan midnight. Browser rendering still needs owner review.
+- Only the embedded webpage JavaScript changes; control logic and settings storage remain unchanged. Rebuild/upload firmware to update its embedded dashboard.
+
 ## Initial repository baseline — 2026-11-05
 
 Imported the current working ShuntDashboard version 23 source and build-guide draft.
