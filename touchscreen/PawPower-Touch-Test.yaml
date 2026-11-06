@@ -145,7 +145,7 @@ lvgl:
                   width: 17
                   height: 23
                   radius: 20
-                  bg_color: 0x61E4AA
+                  bg_color: 0x00FF00
                   border_width: 0
               - obj:
                   x: 22
@@ -153,7 +153,7 @@ lvgl:
                   width: 17
                   height: 25
                   radius: 20
-                  bg_color: 0x61E4AA
+                  bg_color: 0x00FF00
                   border_width: 0
               - obj:
                   x: 45
@@ -161,7 +161,7 @@ lvgl:
                   width: 17
                   height: 25
                   radius: 20
-                  bg_color: 0x61E4AA
+                  bg_color: 0x00FF00
                   border_width: 0
               - obj:
                   x: 65
@@ -169,7 +169,7 @@ lvgl:
                   width: 17
                   height: 23
                   radius: 20
-                  bg_color: 0x61E4AA
+                  bg_color: 0x00FF00
                   border_width: 0
               - obj:
                   x: 20
@@ -177,7 +177,7 @@ lvgl:
                   width: 46
                   height: 40
                   radius: 25
-                  bg_color: 0x61E4AA
+                  bg_color: 0x00FF00
                   border_width: 0
               - line:
                   x: 29
