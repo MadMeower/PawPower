@@ -1,0 +1,24 @@
+# Local credentials and ESPHome state
+secrets.yaml
+secrets.yml
+**/secrets.yaml
+**/secrets.yml
+.esphome/
+**/.esphome/
+.env
+.env.*
+!.env.example
+# Generated files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.bin
+*.elf
+*.map
+*.log
+# Local operating system files
+.DS_Store
+Thumbs.db
