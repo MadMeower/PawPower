@@ -82,6 +82,7 @@ class SettingsStore {
     message_="Using starting values; review and Apply for this bank";
   }
   const BatterySettings &get()const{return record_.settings;}
+  const std::string &message() const { return message_; }
   bool confirmed()const{return saved_;}
   uint32_t revision()const{return record_.revision;}
   bool apply(const std::string &payload) {

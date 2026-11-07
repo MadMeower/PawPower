@@ -9,8 +9,8 @@ namespace paw {
 // clear its queue. Do not also declare an ESPHome canbus component on this CAN.
 class PylonTransport {
  public:
-  bool setup() {
-    twai_general_config_t general=TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_15,GPIO_NUM_16,TWAI_MODE_NORMAL);
+  bool setup(gpio_num_t tx=GPIO_NUM_15, gpio_num_t rx=GPIO_NUM_16) {
+    twai_general_config_t general=TWAI_GENERAL_CONFIG_DEFAULT(tx,rx,TWAI_MODE_NORMAL);
     general.tx_queue_len=7;general.rx_queue_len=10;
     twai_timing_config_t timing=TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t filter=TWAI_FILTER_CONFIG_ACCEPT_ALL();

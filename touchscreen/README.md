@@ -1,78 +1,45 @@
-# Paw Power touchscreen: first hardware test
+# Paw Power touchscreen edition
 
-**Target: Waveshare ESP32-S3-Touch-LCD-4.3B-BOX (SKU 28141).**
-Status: ESPHome 2026.10.2 configuration validated; physical hardware test pending.
+Target: **Waveshare ESP32-S3-Touch-LCD-4.3B-BOX**, 800×480, 16MB flash, 8MB octal PSRAM.
 
-This folder's test is a standalone USB-powered display/touch check. It contains
-no bridge headers, shunt polling or CAN driver. It uses a separate hostname,
-`pawpower-screen-test`, so the working bridge can stay online during testing.
+The complete configuration is now [firmware/PawPower-Display.yaml](../firmware/PawPower-Display.yaml), using [one shared firmware folder](../firmware/README.md) with the non-display board. `PawPower-Touch-Test.yaml` remains a legacy standalone hardware test; it is not the full battery application.
 
-## Prepare before the board arrives
+## Install
 
-1. Download this `touchscreen` branch: Code > Download ZIP.
-2. Copy `PawPower-Touch-Test.yaml` from this folder into ESPHome Device Builder's
-   configuration folder. This test does not need the files in `firmware/`.
-3. Put your private `secrets.yaml` beside the test, with `wifi_ssid`,
-   `wifi_password` and `shunt_api_key`. You can use the same secret names you
-   already have. A new device can use its own generated API key. Never upload
-   the populated secrets file to GitHub.
-4. Use ESPHome 2026.10.2 or newer and compile the test. Newer versions still
-   require checking; the configuration was validated with 2026.10.2.
+1. Download this branch. Copy `firmware/PawPower-Display.yaml` and the complete `firmware/pawpower_shared` folder into your ESPHome configuration folder.
+2. Keep your private `secrets.yaml` beside the entry file. Use `firmware/secrets.yaml.example` as a template only.
+3. Retain your existing hostname/IP when updating. The public example uses hostname `pawpower-display` and DHCP.
+4. Compile/upload with ESPHome 2026.10.2. Use a USB data connection for first installation or recovery. During development, the owner observed OTA uploads not showing the new layout; USB uploads showed it. The precise cause remains unresolved.
+5. Test screen navigation and settings on USB first. No shunt attached means unavailable readings. The original bridge can remain running while the display's RS485/CAN terminals are disconnected.
+6. Check shunt readings and current sign before enabling CAN, then repeat the USB-CAN bench check. Stop the old ESP poller when moving the shunt connection.
 
-## When it arrives
+## Screen
 
-1. Start with only USB connected. Use the supplied/proper USB-C data cable and
-   a reliable computer USB supply. Leave all terminal peripherals disconnected.
-2. Check the factory screen first if practical, then perform the initial USB
-   flash through your local ESPHome Device Builder.
-3. If USB is not recognized, follow the board's BOOT/RESET instructions in the
-   manufacturer guide linked below. After flashing, reset the board if needed.
-4. Expect a green paw with a gold zigzag bolt, `Paw Power`, and a large tap button.
-5. Tap the button several times. Its counter should increment; logs also print
-   touch coordinates. Check the screen edges for alignment, color and flicker.
-6. Report the display result, tap result and logs before adding the bridge.
+Bottom navigation: **Battery / Controls / History / Settings**.
 
-This uses native LVGL shapes, so no external font or image download is needed.
-The paw is a test icon, not the final image logo. The button only changes a
-counter and does not send a payment or control equipment.
+- Battery: SOC, voltage, signed current/power, temperature, remaining capacity and runtime estimates.
+- Controls: CAN enable/status and memory/loop diagnostics.
+- History: recent daily energy and peaks; the web dashboard holds the fuller history view.
+- Settings page 1: ten bank capacity/current/voltage/SOC values.
+- Settings page 2: cold/hot protection enable and stop/restart temperatures in °F.
+- Numeric entry: dark green page/keys, white numbers, Cancel and Use Value. Save settings validates and commits the full profile; Reload saved discards edits.
+- Five paw taps within three seconds open Cookie's Easter egg. Tap the photo to exit. Donation link/QR and Donut's replacement photo are not supplied yet.
 
-## Verified hardware map for later integration
+The Chrome visual editors do not reliably display the package-based layout. The actual screen is the current reference.
 
-| Function | Type-B connection |
+## Hardware
+
+| Function | Connection |
 |---|---|
-| I2C SDA / SCL | GPIO8 / GPIO9 |
-| Touch IRQ | GPIO4 |
-| Touch reset | CH422G EXIO1 |
-| Backlight enable | CH422G EXIO2 |
-| RS485 ESP transmit / receive | GPIO44 / GPIO43; automatic direction control |
-| CAN ESP transmit / receive | GPIO15 / GPIO16 |
-| Memory | 16MB flash, 8MB octal PSRAM |
-| Power | USB-C 5V; separate terminal input 7–36V |
+| I2C | SDA8 / SCL9 |
+| Touch | IRQ4, CH422G EXIO1 reset |
+| LCD backlight | CH422G EXIO2 |
+| RS485 | TX44 / RX43, automatic direction |
+| CAN | TX15 / RX16, 500 kbps |
+| Power | USB-C 5V or specified 7–36V input |
 
-**Do not carry over GPIO17/18/21 as RS485 pins from the original bridge.** Those
-pins belong to the screen on this board. Do not connect a nominal 48V battery
-bank directly to its 7–36V terminal input; continue using the appropriate USB
-converter when this leaves the USB bench.
+GPIO17/18/21 belong to the LCD on this board, so the original board's UART mapping must not be reused. Do not connect a nominal 48V bank directly to the 7–36V input.
 
-The RGB display preset is named `ESP32-S3-TOUCH-LCD-4.3` in ESPHome. Its LCD
-signal pins and dimensions match Waveshare's Type-B pin table; they are listed
-explicitly in the test too. This preset's LCD reset defaults to CH422G EXIO3.
-Pin-map agreement/configuration validation are not a substitute for the first
-hardware test. Pixel clock/panel timing and touch orientation will be checked
-on arrival.
+Display, touch, keypad, settings and navigation have been exercised by the owner. The display board's live RS485/CAN integration is still pending. A startup stack-pressure issue and later history JSON allocation abort were addressed by reducing screen-refresh stack use and allowing standard allocations in PSRAM. The owner reports the allocation change stopped the crash; extended testing remains pending.
 
-## Next steps after the first test passes
-
-Build the Battery page first, then wire up live shunt readings. Share the bridge
-core with a separate board entry point after the display and touch work. Only
-then test CAN with the inverter. History, Settings and Donut follow one page at
-a time. This branch is experimental and is not a replacement for main's
-working bridge.
-
-## References
-
-- [Waveshare Type-B specifications and pin map](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B)
-- [Waveshare Type-B flashing instructions](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B)
-- [ESPHome MIPI RGB driver and example pin map](https://esphome.io/components/display/mipi_rgb/)
-- [ESPHome GT911 touch controller](https://esphome.io/components/touchscreen/gt911/)
-- [ESPHome CH422G I/O expander](https://esphome.io/components/ch422g/)
+[Waveshare specifications and pin map](https://docs.waveshare.com/ESP32-S3-Touch-LCD-4.3B)

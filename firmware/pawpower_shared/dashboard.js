@@ -1,5 +1,24 @@
 (() => {
   'use strict';
+  // Seasonal calendar guide, not astronomical event timing or PV prediction.
+  // UTC arithmetic on calendar dates avoids DST-related 23/25-hour day errors.
+  function seasonalCycle(isoDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return null;
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const stamp = Date.UTC(year, month - 1, day);
+    if (new Date(stamp).toISOString().slice(0,10) !== isoDate) return null;
+    const summer = Date.UTC(year,5,21), winter = Date.UTC(year,11,21);
+    const decreasing = stamp >= summer && stamp < winter;
+    const base = stamp >= winter ? winter : Date.UTC(year-1,11,21);
+    const end = stamp >= winter ? Date.UTC(year+1,11,21) : winter;
+    const target = decreasing ? winter : (stamp >= winter ? Date.UTC(year+1,5,21) : summer);
+    const phase = (stamp-base)/(end-base), angle = phase*2*Math.PI;
+    return { days: Math.round((target-stamp)/86400000), decreasing,
+      event: stamp===summer ? 'Summer solstice day' : stamp===winter ? 'Winter solstice day' : null,
+      target: decreasing ? 'winter' : 'summer',
+      x: 50+32*Math.sin(angle), y: 50+32*Math.cos(angle) };
+  }
+  // End seasonal calendar calculation.
   function boot() {
     document.title = 'Paw Power | Battery';
     let viewport = document.querySelector('meta[name="viewport"]');
@@ -20,6 +39,7 @@
       .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:18px}.label{color:#93a6b8;font-size:11px;margin-bottom:7px}.value{font-size:27px;font-weight:600;letter-spacing:-1px}.value small{font-size:15px;font-weight:400;color:#93a6b8;letter-spacing:0}.note{font-size:11px;color:#7f94a6;margin-top:9px}
       .energy-panel{margin-top:14px;padding:14px 18px}.energy-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.energy-number{font-size:22px;font-weight:600}.energy-number small{font-size:12px;font-weight:400;color:#93a6b8}.peak{font-size:11px;margin-top:4px;line-height:1.5;color:#93a6b8}.peak.in{color:#64e5b0}.peak.out{color:#ff7979}.energy-number.in{color:#64e5b0}.energy-number.out{color:#ff7979}.energy-heading{font-size:13px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px}.energy-heading span{font-size:11px;color:#93a6b8}.history{margin-top:12px;border-top:1px solid #263748;padding-top:10px}.history summary{cursor:pointer;color:#a9bbca;font-size:12px}.history-scroll{max-height:230px;overflow:auto;margin-top:10px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:right;padding:8px;border-bottom:1px solid #263748;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:#93a6b8}footer{display:flex;justify-content:space-between;gap:12px;margin-top:16px;color:#7f94a6;font-size:12px}.stale .value,.stale .percent,.stale .big{opacity:.45}
       button{background:#64e5b0;color:#10251d;border:0;border-radius:8px;padding:10px 15px;cursor:pointer;font-weight:650}button:disabled{opacity:.45;cursor:wait}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}.settings-grid label{display:block;font-size:13px;color:#eff5fc}.settings-grid input,.settings-grid select{display:block;width:100%;margin:6px 0;background:#131e2b;border:1px solid #536779;color:#eff5fc;border-radius:8px;padding:10px;font:inherit}.settings-grid small{display:block;font-size:11px;color:#a9bbca;line-height:1.4}.settings-actions{display:flex;gap:10px;flex-wrap:wrap}#settings-message{font-size:13px;line-height:1.5;color:#ffca75}.settings-grid input:focus{outline:2px solid #64e5b0}
+      .season-panel{margin-top:14px;padding:12px 18px;display:flex;align-items:center;gap:16px}.season-dial{width:88px;height:88px;flex:none}.season-dial .season-track{fill:none;stroke:#345064;stroke-width:5}.season-dial .season-dot{fill:#64e5b0;stroke:#131e2b;stroke-width:2}.season-dial text{fill:#aec1cf;font:9px system-ui,sans-serif}.season-title{font-size:13px;color:#ffd35c;margin-bottom:5px}.season-count{font-size:18px;font-weight:600}.season-direction{font-size:12px;color:#a9bbca;margin-top:4px}.season-note{font-size:11px;color:#93a6b8;margin-top:5px}.season-info{min-width:0}
       @media(max-width:650px){main{padding:24px 16px}header{align-items:center;flex-wrap:wrap;gap:12px}.header-title{order:3;flex-basis:100%}#status{margin-left:auto}.settings-grid{grid-template-columns:1fr}.hero{grid-template-columns:1fr;padding:25px;gap:22px}.ring{width:225px;height:225px}.grid{grid-template-columns:repeat(2,1fr)}.energy-grid{grid-template-columns:repeat(2,1fr)}.energy-heading{flex-direction:column}.card{padding:20px}.value{font-size:25px}footer{flex-direction:column}.big{font-size:36px}}
     `;
     document.head.append(style);
@@ -33,8 +53,23 @@
       <article class="panel card"><div class="label">ENERGY REMAINING</div><div class="value"><span id="energy">—</span> <small>kWh</small></div><div class="note">Estimate at nominal 51.2V</div></article>
       <article class="panel card"><div class="label">DATA AGE</div><div class="value"><span id="age">—</span> <small>s</small></div><div class="note">Since last valid shunt reply</div></article></section>
       <section class="panel energy-panel"><div class="energy-heading">Battery energy<span id="energy-state">Waiting for device clock</span></div><div class="energy-grid"><div><div class="label">TODAY · CHARGED</div><div class="energy-number in"><span id="today-in">—</span> <small>kWh</small></div><div class="peak in" id="today-in-peak">Peak — W · — A</div></div><div><div class="label">TODAY · DISCHARGED</div><div class="energy-number out"><span id="today-out">—</span> <small>kWh</small></div><div class="peak out" id="today-out-peak">Peak — W · — A</div></div><div><div class="label">YESTERDAY · CHARGED</div><div class="energy-number in"><span id="yesterday-in">—</span> <small>kWh</small></div><div class="peak in" id="yesterday-in-peak">Peak — W · — A</div></div><div><div class="label">YESTERDAY · DISCHARGED</div><div class="energy-number out"><span id="yesterday-out">—</span> <small>kWh</small></div><div class="peak out" id="yesterday-out-peak">Peak — W · — A</div></div></div><details class="history"><summary>Previous 30 days · Michigan time</summary><div class="history-scroll"><table><thead><tr><th>Date</th><th>Charged kWh</th><th>Discharged kWh</th><th>Peak +W</th><th>Peak −W</th><th>Peak +A</th><th>Peak −A</th><th>Coverage</th></tr></thead><tbody id="energy-history"></tbody></table></div><p class="note">Partial = started mid-day, restarted, or missed readings. These are battery totals, not total house use. Peaks are independent maxima from 5-second samples, recorded since this feature was installed; brief spikes may be missed.</p></details></section>
+      <section class="panel season-panel" aria-label="Chasing the Sun seasonal cycle"><svg class="season-dial" viewBox="0 0 100 100" role="img" aria-label="Annual daylight cycle: summer at top, winter at bottom"><circle class="season-track" cx="50" cy="50" r="32"/><text x="50" y="10" text-anchor="middle">SUMMER</text><text x="50" y="98" text-anchor="middle">WINTER</text><circle id="season-marker" class="season-dot" cx="50" cy="82" r="5"/></svg><div class="season-info"><div class="season-title">Chasing the Sun</div><div id="season-count" class="season-count">Waiting for date…</div><div id="season-direction" class="season-direction"></div><div class="season-note">Northern hemisphere · Calendar guide: Jun 21 / Dec 21 · Not a solar forecast</div></div></section>
       <details class="history"><summary>Disconnects · Shunt <span id="shunt-drops">—</span> / Webpage <span id="web-drops">0</span> today</summary><p class="note" id="shunt-last-drop">Shunt: waiting for history</p><p class="note" id="web-last-drop">Webpage: no drops recorded</p><div class="history-scroll"><table><thead><tr><th>Date</th><th>Shunt drops</th><th>Offline</th><th>Webpage drops</th><th>Offline</th></tr></thead><tbody id="disconnect-history"></tbody></table></div><p class="note">Shunt: no valid reply for 20 seconds. Webpage: event-stream error or 15 seconds without events. Each outage counts once. Webpage records belong to this browser; closed-page time and ESP32 downtime are not measured. Michigan dates.</p></details><details class="history"><summary>CAN output · Pylontech</summary><p class="note">500 kbps · Pylontech · <span id="can-state">Waiting for state</span></p><p class="note" id="can-output-status">Waiting for CAN status</p><button id="can-toggle" type="button">Enable CAN output</button><p class="note">Enables after 3 fresh shunt replies. Pauses on stale data and resumes automatically. Last on/off choice is saved. <span id="can-soc-rules">SOC rules: waiting for settings.</span></p></details><details class="history" id="battery-settings"><summary>Battery settings · Saved on device</summary><p class="note">48V LiFePO₄ profiles only. Match these limits to your battery and inverter specifications. Editing does nothing until Apply saves the complete profile. First installation or temperature-protection upgrade requires a reviewed Apply before CAN can run. Existing inverter limits still apply.</p><form id="settings-form"><fieldset id="settings-fields" disabled style="border:0;padding:0;margin:0"><div class="settings-grid" id="settings-grid"></div><div class="settings-actions"><button type="submit" id="settings-apply">Apply &amp; save to flash</button><button type="button" id="settings-reload">Reload saved values</button></div></fieldset></form><p id="settings-message" role="status" aria-live="polite">Waiting for device settings…</p><p class="note">SOC is calculated from remaining Ah / configured capacity. This does not recalibrate or reprogram the Junctek shunt. A 100% SOC stop still requires suitable voltage limits. Hold voltage is advertised while charging is disabled; it is not an active float stage. Current limits are bank totals, not per battery. Temperature protection blocks charging only. At startup or after rejected/stale readings, each enabled protection must reach its resume threshold. Place the probe on a representative battery.</p></details><details class="history"><summary>Device memory</summary><p class="note">Free heap: <span id="heap-free">—</span> KiB · Largest free block: <span id="heap-block">—</span> KiB · Max loop interval: <span id="loop-ms">—</span> ms</p><p class="note">Live working memory, not firmware size or CPU utilization. Bluetooth disabled.</p></details><footer><span>Local monitor · Refreshes every 5 seconds</span><span id="updated">Waiting for live data</span></footer></main>`;
     const $ = id => document.getElementById(id);
+    let seasonDate = '';
+    setInterval(() => renderSeason(), 60000);
+    function renderSeason() {
+      const date = michiganDate(Date.now());
+      if (date === seasonDate) return;
+      const cycle = seasonalCycle(date);
+      if (!cycle) return;
+      seasonDate = date;
+      $('season-count').textContent = cycle.event || `About ${cycle.days} days until ${cycle.target} solstice`;
+      $('season-direction').textContent = cycle.decreasing ? 'Daylight decreasing · Shortest day ahead' : 'Daylight increasing · Longer days ahead';
+      $('season-marker').setAttribute('cx', cycle.x.toFixed(2));
+      $('season-marker').setAttribute('cy', cycle.y.toFixed(2));
+    }
+
     const settingFields = [
       ['Capacity','Ah',1,10000,0.1,'Total bank capacity, used for SOC and time-to-full, and reported to the inverter over CAN (whole Ah).'],
       ['Stop charging at','%',50,100,0.1,'Charging permission turns off at this SOC.'],
@@ -324,6 +359,7 @@
       return 'rgb(' + stops[stops.length - 1][1].join(',') + ')';
     }
     function render() {
+      renderSeason();
       tickWeb();
       if(webWasLive && Date.now()-lastTransport>=15000)webLost();
       renderDisconnects();

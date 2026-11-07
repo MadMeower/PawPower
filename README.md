@@ -26,31 +26,31 @@ The bridge **is not a cell-monitoring BMS**. It has one temperature probe and ba
 | ESP32-S3 industrial board with RS485 and CAN, linked in the guide | Tested |
 | EG4 6000XP using the matching Pylontech CAN profile | Tested |
 | Other shunts or Pylontech-compatible inverters | Not confirmed; protocol, wiring and control behavior must be checked |
-| Touchscreen edition | In development; not included in this working firmware |
+| Waveshare ESP32-S3-Touch-LCD-4.3B-BOX | Display, touch, settings and navigation tested; RS485/CAN commissioning pending |
 
 ## Start here
 
 Read the [build guide](docs/BUILD-GUIDE.md) for parts, wiring, commissioning, settings and remote access.
 
-1. Copy **everything in `firmware/`** to your ESPHome configuration folder. Keep the JavaScript and all five headers beside `PawPower.yaml`.
+1. Copy your chosen entry file (`firmware/PawPower.yaml` or `firmware/PawPower-Display.yaml`) and the complete `firmware/pawpower_shared/` folder into your ESPHome configuration directory. Keep the shared folder intact.
 2. Copy `secrets.yaml.example` to `secrets.yaml` and fill in your own values. Generate a unique API encryption key as described in the guide.
 3. Review the board/pins, timezone and networking. The public template uses **DHCP**, hostname **`pawpower`**, and friendly name **Paw Power**. Existing users can retain their own name/static-IP block.
 4. Compile and flash using ESPHome Device Builder. First verify shunt readings with inverter CAN disconnected.
 5. Review the settings for your battery bank, apply/save them, then follow the guide's CAN validation and recovery checks.
 
-Do not copy the example bank's charging limits without checking your own batteries and wiring. This repository contains source, not a precompiled firmware image. A reproducible ESPHome version pin and automated full-firmware build are still to be established.
+Do not copy the example bank's charging limits without checking your own batteries and wiring. This repository contains source, not a precompiled firmware image. The shared configuration requires ESPHome 2026.10.2 or newer; automated full-firmware builds are not yet established.
 
 ## Files
 
 | Path | Purpose |
 |---|---|
-| `firmware/` | Working configuration, headers and embedded dashboard |
+| `firmware/` | Two board entry files and a shared firmware folder |
 | `firmware/preview.html` | Browser preview with sample readings, not a live device |
 | `docs/BUILD-GUIDE.md` | Detailed draft installation and wiring guide |
 | `tools/pylon_validator.py` | Receive-only seven-frame checker for CANgaroo's Python view |
 | `CHANGELOG.md` | Repository baseline and changes |
 
-The touchscreen will be developed separately from the working bridge. We have not split firmware into shared and board-specific packages yet.
+Both entry files now load one shared battery core, CAN transport, history implementation and dashboard. The display adds separate hardware and LVGL packages. Its bottom navigation is Battery / Controls / History / Settings. See [the touchscreen guide](touchscreen/README.md) and [shared firmware guide](firmware/README.md). This branch remains experimental; the original board still needs testing after the shared-core migration.
 
 ## Remote access
 
@@ -61,3 +61,4 @@ Keep the device on your LAN. Its webpage authentication does not provide HTTPS. 
 This is an enthusiast project, not manufacturer-certified battery compatibility. Open an issue with your board revision, ESPHome version, inverter model, sanitized configuration and relevant logs. Never post passwords or encryption keys.
 
 MIT licensed. The tested baseline is the existing version 23 working archive, packaged for GitHub with public network/name defaults. See [CHANGELOG.md](CHANGELOG.md) for validation limits.
+

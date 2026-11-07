@@ -9,14 +9,14 @@ The project uses an ESP32-S3 industrial board with onboard RS485 and CAN interfa
 
 **Scope:** this is a shunt-to-CAN bridge, not a cell-monitoring BMS. Individual battery BMS units remain responsible for cell protection. The bridge does not know individual cell voltages, individual battery alarms, or whether one parallel string has disconnected. It must not be represented as manufacturer-approved battery compatibility or Pylontech certification.
 
-This repository starts from the working version 23 archive, with editable cold/hot charging protection, installed-capacity reporting, and the corrected ESPHome text limit. The public template uses hostname `pawpower`, friendly name `Paw Power`, and DHCP. The control logic is unchanged from that archive. Use the current files together.
+This repository starts from the working version 23 archive, with editable cold/hot charging protection, installed-capacity reporting, and the corrected ESPHome text limit. The public template uses hostname `pawpower`, friendly name `Paw Power`, and DHCP. The touchscreen branch now uses a shared core for both board types. Use matching entry files and the complete pawpower_shared folder together; the migrated original-board build still needs field testing.
 
 ## Start here: the short version
 
 The build has three connections: **shunt to RS485, ESP32 to USB power, and CAN to the inverter**. The longer sections below are reference material; you do not have to learn the CAN protocol to build it.
 
 1. Gather the ESP32 module, a compatible shunt, USB power, two communications cables and connectors. The USB-CAN adapter is an optional test tool; it does not remain connected in normal use.
-2. Copy the seven current firmware files together. Copy `secrets.yaml.example` to `secrets.yaml`, then enter your own Wi-Fi details, unique API encryption key and webpage login.
+2. Copy your chosen board entry YAML and the complete pawpower_shared folder together. Copy `secrets.yaml.example` to `secrets.yaml`, then enter your own Wi-Fi details, unique API encryption key and webpage login.
 3. Set the YAML network address for your LAN (or use DHCP), then compile and flash using ESPHome Device Builder.
 4. Connect power and the shunt first. Open the webpage and verify voltage, SOC and the current sign.
 5. Review Battery settings for your bank, including the cold/hot temperature controls in °F, and click **Apply & save to flash**.
@@ -163,14 +163,7 @@ Use the board’s USB-C input with a regulated 5 V supply. If powering it from t
 ## 4. Install the firmware
 
 1. Back up the current inverter settings and any working ESPHome configuration. Begin with the inverter CAN cable disconnected and CAN output disabled.
-2. Copy these files together from `firmware/` into the ESPHome configuration folder:
-   - `PawPower.yaml`
-   - `dashboard.js`
-   - `energy_tracker.h`
-   - `disconnect_tracker.h`
-   - `battery_settings.h`
-   - `pylon_can.h`
-   - `pylon_transport.h`
+2. Copy your board entry file from `firmware/` into the ESPHome configuration folder: `PawPower.yaml` for the original board or `PawPower-Display.yaml` for the Waveshare ESP32-S3-Touch-LCD-4.3B-BOX. Copy the complete `pawpower_shared/` folder beside it. Do not flatten that folder. The original board uses TX17/RX18/DE21; the display uses TX44/RX43 with automatic direction control. Both use CAN TX15/RX16. See [the touchscreen guide](../touchscreen/README.md) for the display.
 3. Copy the supplied `secrets.yaml.example` to a private `secrets.yaml` in that folder. Replace every placeholder with your own values:
 
 ```yaml

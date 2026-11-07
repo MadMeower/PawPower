@@ -1,0 +1,91 @@
+# Waveshare ESP32-S3-Touch-LCD-4.3B-BOX only.
+psram:
+  mode: octal
+  speed: 80MHz
+i2c:
+  id: panel_i2c
+  sda: GPIO8
+  scl: GPIO9
+  scan: true
+ch422g:
+- id: panel_io
+  i2c_id: panel_i2c
+display:
+- platform: mipi_rgb
+  model: ESP32-S3-TOUCH-LCD-4.3
+  id: panel_display
+  dimensions:
+    width: 800
+    height: 480
+  color_order: RGB
+  pclk_frequency: 16MHz
+  pclk_inverted: true
+  de_pin: GPIO5
+  hsync_pin:
+    number: GPIO46
+    ignore_strapping_warning: true
+  vsync_pin:
+    number: GPIO3
+    ignore_strapping_warning: true
+  pclk_pin: GPIO7
+  enable_pin:
+    ch422g: panel_io
+    number: 2
+    mode: OUTPUT
+  hsync_back_porch: 30
+  hsync_front_porch: 210
+  hsync_pulse_width: 30
+  vsync_back_porch: 4
+  vsync_front_porch: 4
+  vsync_pulse_width: 4
+  data_pins:
+    red:
+    - GPIO1
+    - GPIO2
+    - GPIO42
+    - GPIO41
+    - GPIO40
+    green:
+    - GPIO39
+    - GPIO0
+    - GPIO45
+    - GPIO48
+    - GPIO47
+    - GPIO21
+    blue:
+    - GPIO14
+    - GPIO38
+    - GPIO18
+    - GPIO17
+    - GPIO10
+  auto_clear_enabled: false
+  update_interval: never
+touchscreen:
+- platform: gt911
+  id: panel_touch
+  i2c_id: panel_i2c
+  display: panel_display
+  interrupt_pin: GPIO4
+  reset_pin:
+    ch422g: panel_io
+    number: 1
+    mode: OUTPUT
+  on_touch:
+  - lambda: ESP_LOGI("paw_touch", "Touch x=%d y=%d", touch.x, touch.y);
+image:
+- platform: file
+  file: pawpower_shared/Cookie.jpg
+  id: cookie_photo
+  type: RGB565
+  resize: 198x240
+esp32:
+  flash_size: 16MB
+  framework:
+    sdkconfig_options:
+      # Let ordinary C++ allocations (history JSON and web/API buffers) use
+      # PSRAM, instead of exhausting internal heap while PSRAM sits free.
+      CONFIG_SPIRAM_USE_CAPS_ALLOC: "n"
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "256"
+logger:
+  hardware_uart: USB_SERIAL_JTAG
