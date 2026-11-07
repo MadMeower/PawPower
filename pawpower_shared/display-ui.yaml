@@ -1,0 +1,2669 @@
+# Optional touchscreen UI with Battery / Controls / History / Settings navigation.
+lvgl:
+  displays:
+  - panel_display
+  touchscreens:
+  - panel_touch
+  buffer_size: 25%
+  default_font: montserrat_20
+  pages:
+  - id: pp_battery_page
+    bg_color: ${background_color}
+    pad_all: 0
+    widgets:
+    - label:
+        id: pp_battery_brand
+        text: Paw Power
+        x: 74
+        y: 15
+        width: 320
+        height: 36
+        text_font: montserrat_28
+        text_color: ${text_color}
+    - label:
+        id: pp_battery_bank
+        text: 51.2V nominal | 1,120Ah bank
+        x: 24
+        y: 51
+        width: 440
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - label:
+        id: pp_battery_state
+        text: Shunt not connected
+        x: 525
+        y: 25
+        width: 250
+        height: 22
+        text_font: montserrat_14
+        text_color: ${accent_color}
+        text_align: RIGHT
+    - arc:
+        id: pp_soc_arc
+        x: 36
+        y: 85
+        width: 220
+        height: 220
+        min_value: 0
+        max_value: 1000
+        value: 0
+        adjustable: false
+        start_angle: 0
+        end_angle: 360
+        rotation: 270
+        arc_color: 2833998
+        arc_width: 12
+        indicator:
+          arc_color: ${accent_color}
+          arc_width: 12
+          arc_rounded: true
+    - label:
+        id: pp_soc
+        text: Waiting for data
+        x: 62
+        y: 146
+        width: 168
+        height: 56
+        text_font: montserrat_48
+        text_color: ${text_color}
+        text_align: CENTER
+    - label:
+        id: pp_soc_caption
+        text: STATE OF CHARGE
+        x: 56
+        y: 207
+        width: 180
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+        text_align: CENTER
+    - label:
+        id: pp_remaining
+        text: Waiting for data
+        x: 51
+        y: 232
+        width: 190
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+        text_align: CENTER
+    - label:
+        id: pp_flow
+        text: Waiting for data
+        x: 315
+        y: 95
+        width: 420
+        height: 26
+        text_font: montserrat_18
+        text_color: ${accent_color}
+    - label:
+        id: pp_power
+        text: Waiting for data
+        x: 312
+        y: 125
+        width: 450
+        height: 56
+        text_font: montserrat_48
+        text_color: ${text_color}
+    - label:
+        id: pp_flow_note
+        text: Waiting for data
+        x: 315
+        y: 187
+        width: 450
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - label:
+        id: pp_full_heading
+        text: TIME TO FULL
+        x: 315
+        y: 237
+        width: 200
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - label:
+        id: pp_time_full
+        text: Waiting for data
+        x: 315
+        y: 259
+        width: 210
+        height: 32
+        text_font: montserrat_24
+        text_color: ${text_color}
+    - label:
+        id: pp_last_heading
+        text: LAST DRAW ESTIMATE
+        x: 550
+        y: 237
+        width: 230
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - label:
+        id: pp_time_empty
+        text: Waiting for data
+        x: 550
+        y: 259
+        width: 220
+        height: 32
+        text_font: montserrat_24
+        text_color: ${text_color}
+    - obj:
+        id: pp_metric_voltage
+        x: 20
+        y: 320
+        width: 175
+        height: 76
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 12
+        pad_all: 0
+        scrollbar_mode: 'OFF'
+        widgets:
+        - label:
+            id: pp_voltage_title
+            text: VOLTAGE
+            x: 12
+            y: 11
+            width: 153
+            height: 20
+            text_font: montserrat_12
+            text_color: ${muted_color}
+        - label:
+            id: pp_voltage_value
+            text: Waiting for data
+            x: 12
+            y: 34
+            width: 153
+            height: 32
+            text_font: montserrat_24
+            text_color: ${text_color}
+    - obj:
+        id: pp_metric_current
+        x: 215
+        y: 320
+        width: 175
+        height: 76
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 12
+        pad_all: 0
+        scrollbar_mode: 'OFF'
+        widgets:
+        - label:
+            id: pp_current_title
+            text: CURRENT
+            x: 12
+            y: 11
+            width: 153
+            height: 20
+            text_font: montserrat_12
+            text_color: ${muted_color}
+        - label:
+            id: pp_current_value
+            text: Waiting for data
+            x: 12
+            y: 34
+            width: 153
+            height: 32
+            text_font: montserrat_24
+            text_color: ${text_color}
+    - obj:
+        id: pp_metric_temp
+        x: 410
+        y: 320
+        width: 175
+        height: 76
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 12
+        pad_all: 0
+        scrollbar_mode: 'OFF'
+        widgets:
+        - label:
+            id: pp_temp_title
+            text: BATTERY TEMP
+            x: 12
+            y: 11
+            width: 153
+            height: 20
+            text_font: montserrat_12
+            text_color: ${muted_color}
+        - label:
+            id: pp_temp_value
+            text: Waiting for data
+            x: 12
+            y: 34
+            width: 153
+            height: 32
+            text_font: montserrat_24
+            text_color: ${text_color}
+    - obj:
+        id: pp_metric_energy
+        x: 605
+        y: 320
+        width: 175
+        height: 76
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 12
+        pad_all: 0
+        scrollbar_mode: 'OFF'
+        widgets:
+        - label:
+            id: pp_energy_title
+            text: CHARGED TODAY
+            x: 12
+            y: 11
+            width: 153
+            height: 20
+            text_font: montserrat_12
+            text_color: ${muted_color}
+        - label:
+            id: pp_energy_value
+            text: Waiting for data
+            x: 12
+            y: 34
+            width: 153
+            height: 32
+            text_font: montserrat_24
+            text_color: ${text_color}
+    - button:
+        id: pp_battery_secret_paw
+        x: 18
+        y: 10
+        width: 48
+        height: 44
+        bg_opa: TRANSP
+        border_width: 0
+        shadow_width: 0
+        radius: 0
+        pad_all: 0
+        widgets:
+        - obj:
+            id: pp_battery_bean_0
+            x: 2
+            y: 9
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_battery_bean_1
+            x: 12
+            y: 1
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_battery_bean_2
+            x: 24
+            y: 2
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_battery_bean_3
+            x: 33
+            y: 12
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_battery_bean_4
+            x: 11
+            y: 21
+            width: 24
+            height: 19
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - line:
+            x: 16
+            y: 20
+            points:
+            - 12, 0
+            - 3, 9
+            - 12, 9
+            - 4, 19
+            line_color: ${bolt_color}
+            line_width: 3
+            clickable: false
+        on_click:
+        - if:
+            condition:
+              lambda: !lambda |
+                static unsigned taps = 0;
+                static uint32_t started = 0;
+                const uint32_t now = millis();
+                if (taps == 0 || uint32_t(now - started) > 3000U) {
+                  taps = 0;
+                  started = now;
+                }
+                if (++taps >= 5) {
+                  taps = 0;
+                  return true;
+                }
+                return false;
+            then:
+            - lvgl.page.show:
+                id: pp_cookie_page
+                animation: NONE
+    - button:
+        id: pp_battery_page_nav_battery
+        x: 20
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${accent_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Battery
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${background_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_battery_page
+            animation: NONE
+    - button:
+        id: pp_battery_page_nav_controls
+        x: 213
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Controls
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_can_page
+            animation: NONE
+    - button:
+        id: pp_battery_page_nav_history
+        x: 407
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: History
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_history_page
+            animation: NONE
+    - button:
+        id: pp_battery_page_nav_settings
+        x: 600
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Settings
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_settings_page
+            animation: NONE
+  - id: pp_history_page
+    bg_color: ${background_color}
+    pad_all: 0
+    widgets:
+    - label:
+        id: pp_history_brand
+        text: Paw Power
+        x: 74
+        y: 15
+        width: 320
+        height: 36
+        text_font: montserrat_28
+        text_color: ${text_color}
+    - label:
+        id: pp_history_bank
+        text: 51.2V nominal | 1,120Ah bank
+        x: 24
+        y: 51
+        width: 440
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - label:
+        id: pp_history_state
+        text: Shunt not connected
+        x: 525
+        y: 25
+        width: 250
+        height: 22
+        text_font: montserrat_14
+        text_color: ${accent_color}
+        text_align: RIGHT
+    - label:
+        id: pp_history_title
+        text: Battery energy
+        x: 24
+        y: 90
+        width: 440
+        height: 30
+        text_font: montserrat_22
+        text_color: ${text_color}
+    - obj:
+        id: pp_energy_day_0
+        x: 20
+        y: 131
+        width: 370
+        height: 142
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 12
+        pad_all: 0
+        scrollbar_mode: 'OFF'
+        widgets:
+        - label:
+            id: pp_day_0
+            text: TODAY
+            x: 15
+            y: 15
+            width: 340
+            height: 22
+            text_font: montserrat_14
+            text_color: ${muted_color}
+        - label:
+            id: pp_day_values_0
+            text: Waiting for data
+            x: 15
+            y: 45
+            width: 340
+            height: 32
+            text_font: montserrat_24
+            text_color: ${text_color}
+        - label:
+            id: pp_day_units_0
+            text: kWh through battery shunt
+            x: 15
+            y: 79
+            width: 340
+            height: 22
+            text_font: montserrat_14
+            text_color: ${muted_color}
+        - label:
+            id: pp_day_detail_0
+            text: Waiting for data
+            x: 15
+            y: 108
+            width: 340
+            height: 22
+            text_font: montserrat_14
+            text_color: ${muted_color}
+    - obj:
+        id: pp_energy_day_1
+        x: 410
+        y: 131
+        width: 370
+        height: 142
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 12
+        pad_all: 0
+        scrollbar_mode: 'OFF'
+        widgets:
+        - label:
+            id: pp_day_1
+            text: YESTERDAY
+            x: 15
+            y: 15
+            width: 340
+            height: 22
+            text_font: montserrat_14
+            text_color: ${muted_color}
+        - label:
+            id: pp_day_values_1
+            text: Waiting for data
+            x: 15
+            y: 45
+            width: 340
+            height: 32
+            text_font: montserrat_24
+            text_color: ${text_color}
+        - label:
+            id: pp_day_units_1
+            text: kWh through battery shunt
+            x: 15
+            y: 79
+            width: 340
+            height: 22
+            text_font: montserrat_14
+            text_color: ${muted_color}
+        - label:
+            id: pp_day_detail_1
+            text: Waiting for data
+            x: 15
+            y: 108
+            width: 340
+            height: 22
+            text_font: montserrat_14
+            text_color: ${muted_color}
+    - label:
+        id: pp_history_row_1
+        text: Waiting for data
+        x: 24
+        y: 304
+        width: 750
+        height: 26
+        text_font: montserrat_18
+        text_color: ${text_color}
+    - label:
+        id: pp_history_row_2
+        text: Waiting for data
+        x: 24
+        y: 344
+        width: 490
+        height: 26
+        text_font: montserrat_18
+        text_color: ${text_color}
+    - button:
+        id: pp_history_secret_paw
+        x: 18
+        y: 10
+        width: 48
+        height: 44
+        bg_opa: TRANSP
+        border_width: 0
+        shadow_width: 0
+        radius: 0
+        pad_all: 0
+        widgets:
+        - obj:
+            id: pp_history_bean_0
+            x: 2
+            y: 9
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_history_bean_1
+            x: 12
+            y: 1
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_history_bean_2
+            x: 24
+            y: 2
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_history_bean_3
+            x: 33
+            y: 12
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_history_bean_4
+            x: 11
+            y: 21
+            width: 24
+            height: 19
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - line:
+            x: 16
+            y: 20
+            points:
+            - 12, 0
+            - 3, 9
+            - 12, 9
+            - 4, 19
+            line_color: ${bolt_color}
+            line_width: 3
+            clickable: false
+        on_click:
+        - if:
+            condition:
+              lambda: !lambda |
+                static unsigned taps = 0;
+                static uint32_t started = 0;
+                const uint32_t now = millis();
+                if (taps == 0 || uint32_t(now - started) > 3000U) {
+                  taps = 0;
+                  started = now;
+                }
+                if (++taps >= 5) {
+                  taps = 0;
+                  return true;
+                }
+                return false;
+            then:
+            - lvgl.page.show:
+                id: pp_cookie_page
+                animation: NONE
+    - button:
+        id: pp_history_page_nav_battery
+        x: 20
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Battery
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_battery_page
+            animation: NONE
+    - button:
+        id: pp_history_page_nav_controls
+        x: 213
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Controls
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_can_page
+            animation: NONE
+    - button:
+        id: pp_history_page_nav_history
+        x: 407
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${accent_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: History
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${background_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_history_page
+            animation: NONE
+    - button:
+        id: pp_history_page_nav_settings
+        x: 600
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Settings
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_settings_page
+            animation: NONE
+  - id: pp_settings_page
+    bg_color: ${background_color}
+    pad_all: 0
+    widgets:
+    - label:
+        id: pp_settings_brand
+        text: Paw Power
+        x: 74
+        y: 15
+        width: 320
+        height: 36
+        text_font: montserrat_28
+        text_color: ${text_color}
+    - label:
+        id: pp_settings_bank
+        text: Battery / charging | 1 / 2
+        x: 24
+        y: 51
+        width: 440
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - label:
+        id: pp_settings_state
+        text: Shunt not connected
+        x: 525
+        y: 25
+        width: 250
+        height: 22
+        text_font: montserrat_14
+        text_color: ${accent_color}
+        text_align: RIGHT
+    - button:
+        id: pp_preview_apply
+        x: 24
+        y: 345
+        width: 210
+        height: 45
+        bg_color: ${accent_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Save settings
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${background_color}
+        on_click:
+        - script.execute: pp_save_settings
+    - label:
+        id: pp_preview_message
+        text: Settings load at startup
+        x: 250
+        y: 392
+        width: 520
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - button:
+        id: pp_settings_secret_paw
+        x: 18
+        y: 10
+        width: 48
+        height: 44
+        bg_opa: TRANSP
+        border_width: 0
+        shadow_width: 0
+        radius: 0
+        pad_all: 0
+        widgets:
+        - obj:
+            id: pp_settings_bean_0
+            x: 2
+            y: 9
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_1
+            x: 12
+            y: 1
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_2
+            x: 24
+            y: 2
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_3
+            x: 33
+            y: 12
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_4
+            x: 11
+            y: 21
+            width: 24
+            height: 19
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - line:
+            x: 16
+            y: 20
+            points:
+            - 12, 0
+            - 3, 9
+            - 12, 9
+            - 4, 19
+            line_color: ${bolt_color}
+            line_width: 3
+            clickable: false
+        on_click:
+        - if:
+            condition:
+              lambda: !lambda |
+                static unsigned taps = 0;
+                static uint32_t started = 0;
+                const uint32_t now = millis();
+                if (taps == 0 || uint32_t(now - started) > 3000U) {
+                  taps = 0;
+                  started = now;
+                }
+                if (++taps >= 5) {
+                  taps = 0;
+                  return true;
+                }
+                return false;
+            then:
+            - lvgl.page.show:
+                id: pp_cookie_page
+                animation: NONE
+    - button:
+        x: 510
+        y: 345
+        width: 256
+        height: 45
+        bg_color: ${card_color}
+        widgets:
+        - label:
+            text: Discharging >
+            align: CENTER
+            text_font: montserrat_18
+        on_click:
+        - lvgl.page.show:
+            id: pp_settings_advanced_page
+            animation: NONE
+    - button:
+        x: 250
+        y: 345
+        width: 240
+        height: 45
+        bg_color: ${card_color}
+        widgets:
+        - label:
+            text: Reload saved
+            align: CENTER
+            text_font: montserrat_18
+        on_click:
+        - script.execute: pp_load_settings
+    - label:
+        id: pp_edit_capacity_title
+        text: Bank capacity (Ah)
+        x: 24
+        y: 90
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_capacity
+        x: 264
+        y: 84
+        width: 112
+        height: 36
+        text: '1120'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 0; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Bank capacity (Ah)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_capacity)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_charge_current_title
+        text: Charge limit (A)
+        x: 414
+        y: 90
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_charge_current
+        x: 654
+        y: 84
+        width: 112
+        height: 36
+        text: '125'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 1; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Charge limit (A)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_charge_current)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_charge_voltage_title
+        text: Charge voltage (V)
+        x: 24
+        y: 130
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_charge_voltage
+        x: 264
+        y: 124
+        width: 112
+        height: 36
+        text: '56.8'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 2; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Charge voltage (V)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_charge_voltage)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_charge_current_title_advanced
+        text: Hold voltage (V)
+        x: 414
+        y: 130
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_hold_voltage
+        x: 654
+        y: 124
+        width: 112
+        height: 36
+        text: '54'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 9; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Hold voltage (V)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_hold_voltage)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_stop_soc_title
+        text: SOC stop (%)
+        x: 24
+        y: 170
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_stop_soc
+        x: 264
+        y: 164
+        width: 112
+        height: 36
+        text: '100'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 3; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: SOC stop (%)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_stop_soc)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_capacity_title_advanced
+        text: SOC resume (%)
+        x: 414
+        y: 170
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_resume_soc
+        x: 654
+        y: 164
+        width: 112
+        height: 36
+        text: '93'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 8; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: SOC resume (%)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_resume_soc)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_hot_stop_title_advanced
+        text: Cold protection
+        x: 24
+        y: 210
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - switch:
+        id: pp_edit_cold_enabled
+        x: 264
+        y: 204
+        width: 90
+        height: 30
+        state:
+          checked: true
+    - label:
+        id: pp_edit_hot_resume_title_advanced
+        text: Hot protection
+        x: 414
+        y: 210
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - switch:
+        id: pp_edit_hot_enabled
+        x: 654
+        y: 204
+        width: 90
+        height: 30
+        state:
+          checked: true
+    - label:
+        id: pp_edit_cold_stop_title
+        text: Cold stop (°F)
+        x: 24
+        y: 250
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_cold_stop
+        x: 264
+        y: 244
+        width: 112
+        height: 36
+        text: '35.6'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 4; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Cold stop (°F)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_cold_stop)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_cold_resume_title
+        text: Cold resume (°F)
+        x: 414
+        y: 250
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_cold_resume
+        x: 654
+        y: 244
+        width: 112
+        height: 36
+        text: '41'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 5; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Cold resume (°F)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_cold_resume)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_hot_stop_title
+        text: Hot stop (°F)
+        x: 24
+        y: 290
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_hot_stop
+        x: 264
+        y: 284
+        width: 112
+        height: 36
+        text: '113'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 6; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Hot stop (°F)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_hot_stop)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_hot_resume_title
+        text: Hot resume (°F)
+        x: 414
+        y: 290
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_hot_resume
+        x: 654
+        y: 284
+        width: 112
+        height: 36
+        text: '104'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 7; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Hot resume (°F)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_hot_resume)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - button:
+        id: pp_settings_page_nav_battery
+        x: 20
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Battery
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_battery_page
+            animation: NONE
+    - button:
+        id: pp_settings_page_nav_controls
+        x: 213
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Controls
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_can_page
+            animation: NONE
+    - button:
+        id: pp_settings_page_nav_history
+        x: 407
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: History
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_history_page
+            animation: NONE
+    - button:
+        id: pp_settings_page_nav_settings
+        x: 600
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${accent_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Settings
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${background_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_settings_page
+            animation: NONE
+  - id: pp_settings_advanced_page
+    bg_color: ${background_color}
+    pad_all: 0
+    widgets:
+    - label:
+        id: pp_settings_brand_advanced
+        text: Paw Power
+        x: 74
+        y: 15
+        width: 320
+        height: 36
+        text_font: montserrat_28
+        text_color: ${text_color}
+    - label:
+        id: pp_settings_bank_advanced
+        text: Discharging | 2 / 2
+        x: 24
+        y: 51
+        width: 440
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - label:
+        id: pp_settings_state_advanced
+        text: Shunt not connected
+        x: 525
+        y: 25
+        width: 250
+        height: 22
+        text_font: montserrat_14
+        text_color: ${accent_color}
+        text_align: RIGHT
+    - button:
+        id: pp_preview_apply_advanced
+        x: 24
+        y: 345
+        width: 210
+        height: 45
+        bg_color: ${accent_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Save settings
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${background_color}
+        on_click:
+        - script.execute: pp_save_settings
+    - label:
+        id: pp_preview_message_advanced
+        text: Settings load at startup
+        x: 250
+        y: 392
+        width: 520
+        height: 22
+        text_font: montserrat_14
+        text_color: ${muted_color}
+    - button:
+        id: pp_settings_secret_paw_advanced
+        x: 18
+        y: 10
+        width: 48
+        height: 44
+        bg_opa: TRANSP
+        border_width: 0
+        shadow_width: 0
+        radius: 0
+        pad_all: 0
+        widgets:
+        - obj:
+            id: pp_settings_bean_0_advanced
+            x: 2
+            y: 9
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_1_advanced
+            x: 12
+            y: 1
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_2_advanced
+            x: 24
+            y: 2
+            width: 9
+            height: 13
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_3_advanced
+            x: 33
+            y: 12
+            width: 9
+            height: 12
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - obj:
+            id: pp_settings_bean_4_advanced
+            x: 11
+            y: 21
+            width: 24
+            height: 19
+            radius: 65535
+            bg_color: ${paw_color}
+            bg_opa: 100%
+            border_width: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+        - line:
+            x: 16
+            y: 20
+            points:
+            - 12, 0
+            - 3, 9
+            - 12, 9
+            - 4, 19
+            line_color: ${bolt_color}
+            line_width: 3
+            clickable: false
+        on_click:
+        - if:
+            condition:
+              lambda: !lambda |
+                static unsigned taps = 0;
+                static uint32_t started = 0;
+                const uint32_t now = millis();
+                if (taps == 0 || uint32_t(now - started) > 3000U) {
+                  taps = 0;
+                  started = now;
+                }
+                if (++taps >= 5) {
+                  taps = 0;
+                  return true;
+                }
+                return false;
+            then:
+            - lvgl.page.show:
+                id: pp_cookie_page
+                animation: NONE
+    - button:
+        x: 510
+        y: 345
+        width: 256
+        height: 45
+        bg_color: ${card_color}
+        widgets:
+        - label:
+            text: < Battery / charging
+            align: CENTER
+            text_font: montserrat_18
+        on_click:
+        - lvgl.page.show:
+            id: pp_settings_page
+            animation: NONE
+    - button:
+        x: 250
+        y: 345
+        width: 240
+        height: 45
+        bg_color: ${card_color}
+        widgets:
+        - label:
+            text: Reload saved
+            align: CENTER
+            text_font: montserrat_18
+        on_click:
+        - script.execute: pp_load_settings
+    - label:
+        id: pp_edit_charge_voltage_title_advanced
+        text: Discharge limit (A)
+        x: 24
+        y: 90
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_discharge_current
+        x: 264
+        y: 84
+        width: 112
+        height: 36
+        text: '140'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 10; id(pp_edit_advanced) = true;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Discharge limit (A)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_discharge_current)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_discharge_stop_soc_title
+        text: Discharge stop (%)
+        x: 24
+        y: 130
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_discharge_stop_soc
+        x: 264
+        y: 124
+        width: 112
+        height: 36
+        text: '20'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 14; id(pp_edit_advanced) = true;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Discharge stop (%)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_discharge_stop_soc)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_discharge_resume_soc_title
+        text: Discharge resume (%)
+        x: 414
+        y: 130
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_discharge_resume_soc
+        x: 654
+        y: 124
+        width: 112
+        height: 36
+        text: '25'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 15; id(pp_edit_advanced) = true;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Discharge resume (%)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_discharge_resume_soc)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_stop_soc_title_advanced
+        text: Low cutoff (V)
+        x: 24
+        y: 170
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_cutoff_voltage
+        x: 264
+        y: 164
+        width: 112
+        height: 36
+        text: '48'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 11; id(pp_edit_advanced) = true;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Low cutoff (V)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_cutoff_voltage)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_cold_stop_title_advanced
+        text: Recovery (V)
+        x: 414
+        y: 170
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_recovery_voltage
+        x: 654
+        y: 164
+        width: 112
+        height: 36
+        text: '50.8'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 12; id(pp_edit_advanced) = true;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Recovery (V)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_recovery_voltage)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_cold_resume_title_advanced
+        text: Low warning (V)
+        x: 24
+        y: 210
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_warning_voltage
+        x: 264
+        y: 204
+        width: 112
+        height: 36
+        text: '49'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_18
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 6
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 13; id(pp_edit_advanced) = true;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Low warning (V)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_warning_voltage)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - button:
+        id: pp_settings_advanced_page_nav_battery
+        x: 20
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Battery
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_battery_page
+            animation: NONE
+    - button:
+        id: pp_settings_advanced_page_nav_controls
+        x: 213
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Controls
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_can_page
+            animation: NONE
+    - button:
+        id: pp_settings_advanced_page_nav_history
+        x: 407
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: History
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_history_page
+            animation: NONE
+    - button:
+        id: pp_settings_advanced_page_nav_settings
+        x: 600
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${accent_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Settings
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${background_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_settings_page
+            animation: NONE
+  - id: pp_cookie_page
+    skip: true
+    bg_color: ${background_color}
+    pad_all: 0
+    widgets:
+    - obj:
+        id: pp_cookie_return
+        clickable: false
+        scrollable: false
+        x: 0
+        y: 0
+        width: 800
+        height: 480
+        bg_color: ${background_color}
+        bg_opa: 100%
+        border_width: 0
+        shadow_width: 0
+        radius: 0
+        pad_all: 0
+        widgets:
+        - label:
+            id: pp_cookie_name
+            text: Cookie
+            x: 80
+            y: 30
+            width: 640
+            height: 56
+            text_align: CENTER
+            text_font: montserrat_48
+            text_color: ${text_color}
+            clickable: false
+        - label:
+            id: pp_cookie_title
+            text: Chief Electron Inspector
+            x: 80
+            y: 95
+            width: 640
+            height: 32
+            text_align: CENTER
+            text_font: montserrat_24
+            text_color: ${accent_color}
+            clickable: false
+        - image:
+            id: pp_cookie_photo
+            src: cookie_photo
+            x: 301
+            y: 130
+            clickable: true
+            on_click:
+            - lvgl.page.show:
+                id: pp_battery_page
+                animation: NONE
+        - label:
+            id: pp_cookie_treats
+            text: Payment accepted in treats.
+            x: 80
+            y: 375
+            width: 640
+            height: 30
+            text_align: CENTER
+            text_font: montserrat_22
+            text_color: ${text_color}
+            clickable: false
+        - label:
+            id: pp_cookie_exit
+            text: Tap Cookie to return
+            x: 80
+            y: 435
+            width: 640
+            height: 22
+            text_align: CENTER
+            text_font: montserrat_14
+            text_color: ${muted_color}
+            clickable: false
+  - id: pp_keypad_page
+    skip: true
+    bg_color: ${keypad_background_color}
+    pad_all: 0
+    widgets:
+    - label:
+        id: pp_keypad_title
+        text: Edit value
+        x: 30
+        y: 20
+        width: 740
+        height: 36
+        text_font: montserrat_28
+        text_color: ${text_color}
+    - textarea:
+        id: pp_keypad_value
+        x: 260
+        y: 65
+        width: 280
+        height: 44
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_20
+        bg_color: '0x162C43'
+        text_color: ${text_color}
+        border_color: '0x466581'
+    - button:
+        x: 110
+        y: 120
+        width: 220
+        height: 45
+        bg_color: ${keypad_cancel_color}
+        widgets:
+        - label:
+            text: Cancel
+            align: CENTER
+            text_color: ${text_color}
+        on_click:
+        - &id001
+          if:
+            condition:
+              lambda: !lambda |-
+                return id(pp_edit_advanced);
+            then:
+            - lvgl.page.show:
+                id: pp_settings_advanced_page
+                animation: NONE
+            else:
+            - lvgl.page.show:
+                id: pp_settings_page
+                animation: NONE
+        bg_opa: 100%
+        border_width: 1
+        border_color: ${muted_color}
+    - button:
+        x: 470
+        y: 120
+        width: 220
+        height: 45
+        bg_color: ${keypad_apply_color}
+        widgets:
+        - label:
+            text: Use value
+            align: CENTER
+            text_color: ${background_color}
+        on_click:
+        - lambda: !lambda |-
+            const char *value = lv_textarea_get_text(id(pp_keypad_value));
+            switch (id(pp_edit_index)) {
+              case 0: lv_textarea_set_text(id(pp_edit_capacity), value); break;
+              case 1: lv_textarea_set_text(id(pp_edit_charge_current), value); break;
+              case 2: lv_textarea_set_text(id(pp_edit_charge_voltage), value); break;
+              case 3: lv_textarea_set_text(id(pp_edit_stop_soc), value); break;
+              case 4: lv_textarea_set_text(id(pp_edit_cold_stop), value); break;
+              case 5: lv_textarea_set_text(id(pp_edit_cold_resume), value); break;
+              case 6: lv_textarea_set_text(id(pp_edit_hot_stop), value); break;
+              case 7: lv_textarea_set_text(id(pp_edit_hot_resume), value); break;
+              case 8: lv_textarea_set_text(id(pp_edit_resume_soc), value); break;
+              case 9: lv_textarea_set_text(id(pp_edit_hold_voltage), value); break;
+              case 10: lv_textarea_set_text(id(pp_edit_discharge_current), value); break;
+              case 11: lv_textarea_set_text(id(pp_edit_cutoff_voltage), value); break;
+              case 12: lv_textarea_set_text(id(pp_edit_recovery_voltage), value); break;
+              case 14: lv_textarea_set_text(id(pp_edit_discharge_stop_soc), value); break;
+              case 15: lv_textarea_set_text(id(pp_edit_discharge_resume_soc), value); break;
+              case 13: lv_textarea_set_text(id(pp_edit_warning_voltage), value); break;
+            }
+        - *id001
+        bg_opa: 100%
+        border_width: 1
+        border_color: ${muted_color}
+    - keyboard:
+        id: pp_numeric_keyboard
+        align: TOP_LEFT
+        x: 20
+        y: 175
+        width: 760
+        height: 285
+        mode: NUMBER
+        textarea: pp_keypad_value
+        bg_color: ${keypad_background_color}
+        bg_opa: 100%
+        border_width: 0
+        items:
+          bg_color: '0x1B344D'
+          bg_opa: 100%
+          text_color: ${text_color}
+          text_font: montserrat_24
+          border_color: '0x466581'
+          border_width: 1
+          radius: 8
+          pressed:
+            bg_color: ${keypad_apply_color}
+            text_color: ${background_color}
+  - id: pp_can_page
+    skip: true
+    bg_color: ${background_color}
+    pad_all: 0
+    widgets:
+    - label:
+        text: Controls | CAN bridge & diagnostics
+        x: 30
+        y: 25
+        width: 740
+        height: 40
+        text_font: montserrat_28
+        text_color: ${text_color}
+    - label:
+        id: pp_can_status
+        text: Disabled
+        x: 30
+        y: 90
+        width: 740
+        height: 60
+        text_font: montserrat_18
+        text_color: ${muted_color}
+    - button:
+        x: 170
+        y: 165
+        width: 460
+        height: 65
+        bg_color: ${card_color}
+        widgets:
+        - label:
+            id: pp_can_button_text
+            text: Enable CAN output
+            align: CENTER
+        on_click:
+        - switch.toggle: can_bench_output
+    - label:
+        text: 500 kbps | Starts after 3 fresh, valid shunt replies
+        x: 30
+        y: 255
+        width: 740
+        height: 30
+        text_font: montserrat_18
+        text_color: ${muted_color}
+    - label:
+        id: pp_device_stats
+        text: Waiting for device statistics
+        x: 30
+        y: 305
+        width: 740
+        height: 55
+        text_font: montserrat_16
+        text_color: ${muted_color}
+    - button:
+        id: pp_can_page_nav_battery
+        x: 20
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Battery
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_battery_page
+            animation: NONE
+    - button:
+        id: pp_can_page_nav_controls
+        x: 213
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${accent_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Controls
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${background_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_can_page
+            animation: NONE
+    - button:
+        id: pp_can_page_nav_history
+        x: 407
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: History
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_history_page
+            animation: NONE
+    - button:
+        id: pp_can_page_nav_settings
+        x: 600
+        y: 416
+        width: 180
+        height: 48
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_width: 0
+        radius: 9
+        pad_all: 0
+        widgets:
+        - label:
+            text: Settings
+            align: CENTER
+            text_font: montserrat_18
+            text_color: ${text_color}
+        on_click:
+        - lvgl.page.show:
+            id: pp_settings_page
+            animation: NONE
+script:
+- id: pp_load_settings
+  then:
+  - lambda: !lambda |-
+      const auto &v = paw::settings_store().get().v;
+      char text[32];
+      std::snprintf(text, sizeof(text), "%.1f", v[0]);
+      lv_textarea_set_text(id(pp_edit_capacity), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[5]);
+      lv_textarea_set_text(id(pp_edit_charge_current), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[3]);
+      lv_textarea_set_text(id(pp_edit_charge_voltage), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[1]);
+      lv_textarea_set_text(id(pp_edit_stop_soc), text);
+      std::snprintf(text, sizeof(text), "%.1f", (v[11] * 1.8f + 32.0f));
+      lv_textarea_set_text(id(pp_edit_cold_stop), text);
+      std::snprintf(text, sizeof(text), "%.1f", (v[12] * 1.8f + 32.0f));
+      lv_textarea_set_text(id(pp_edit_cold_resume), text);
+      std::snprintf(text, sizeof(text), "%.1f", (v[14] * 1.8f + 32.0f));
+      lv_textarea_set_text(id(pp_edit_hot_stop), text);
+      std::snprintf(text, sizeof(text), "%.1f", (v[15] * 1.8f + 32.0f));
+      lv_textarea_set_text(id(pp_edit_hot_resume), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[2]);
+      lv_textarea_set_text(id(pp_edit_resume_soc), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[4]);
+      lv_textarea_set_text(id(pp_edit_hold_voltage), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[6]);
+      lv_textarea_set_text(id(pp_edit_discharge_current), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[7]);
+      lv_textarea_set_text(id(pp_edit_cutoff_voltage), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[8]);
+      lv_textarea_set_text(id(pp_edit_recovery_voltage), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[9]);
+      lv_textarea_set_text(id(pp_edit_warning_voltage), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[16]);
+      lv_textarea_set_text(id(pp_edit_discharge_stop_soc), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[17]);
+      lv_textarea_set_text(id(pp_edit_discharge_resume_soc), text);
+      if (v[10] != 0) lv_obj_add_state(id(pp_edit_cold_enabled), LV_STATE_CHECKED); else lv_obj_remove_state(id(pp_edit_cold_enabled), LV_STATE_CHECKED);
+      if (v[13] != 0) lv_obj_add_state(id(pp_edit_hot_enabled), LV_STATE_CHECKED); else lv_obj_remove_state(id(pp_edit_hot_enabled), LV_STATE_CHECKED);
+      const char *message = paw::settings_store().confirmed() ? "Saved values loaded" : "Review defaults, then Save settings";
+      lv_label_set_text(id(pp_preview_message), message);
+      lv_label_set_text(id(pp_preview_message_advanced), message);
+- id: pp_save_settings
+  then:
+  - lambda: !lambda |-
+      auto &store = paw::settings_store();
+      auto next = store.get();
+      char *end = nullptr;
+      const char *raw;
+      float parsed;
+      raw = lv_textarea_get_text(id(pp_edit_capacity));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: capacity");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: capacity");
+        return;
+      }
+      next.v[0] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_charge_current));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: charge current");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: charge current");
+        return;
+      }
+      next.v[5] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_charge_voltage));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: charge voltage");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: charge voltage");
+        return;
+      }
+      next.v[3] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_stop_soc));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: stop soc");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: stop soc");
+        return;
+      }
+      next.v[1] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_cold_stop));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: cold stop");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: cold stop");
+        return;
+      }
+      next.v[11] = (parsed - 32.0f) / 1.8f;
+      raw = lv_textarea_get_text(id(pp_edit_cold_resume));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: cold resume");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: cold resume");
+        return;
+      }
+      next.v[12] = (parsed - 32.0f) / 1.8f;
+      raw = lv_textarea_get_text(id(pp_edit_hot_stop));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: hot stop");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: hot stop");
+        return;
+      }
+      next.v[14] = (parsed - 32.0f) / 1.8f;
+      raw = lv_textarea_get_text(id(pp_edit_hot_resume));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: hot resume");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: hot resume");
+        return;
+      }
+      next.v[15] = (parsed - 32.0f) / 1.8f;
+      raw = lv_textarea_get_text(id(pp_edit_resume_soc));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: resume soc");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: resume soc");
+        return;
+      }
+      next.v[2] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_hold_voltage));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: hold voltage");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: hold voltage");
+        return;
+      }
+      next.v[4] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_discharge_current));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: discharge current");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: discharge current");
+        return;
+      }
+      next.v[6] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_cutoff_voltage));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: cutoff voltage");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: cutoff voltage");
+        return;
+      }
+      next.v[7] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_recovery_voltage));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: recovery voltage");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: recovery voltage");
+        return;
+      }
+      next.v[8] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_warning_voltage));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid number: warning voltage");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid number: warning voltage");
+        return;
+      }
+      next.v[9] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_discharge_stop_soc));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid discharge SOC");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid discharge SOC");
+        return;
+      }
+      next.v[16] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_discharge_resume_soc));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid discharge SOC");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid discharge SOC");
+        return;
+      }
+      next.v[17] = parsed;
+      next.v[10] = lv_obj_has_state(id(pp_edit_cold_enabled), LV_STATE_CHECKED) ? 1.0f : 0.0f;
+      next.v[13] = lv_obj_has_state(id(pp_edit_hot_enabled), LV_STATE_CHECKED) ? 1.0f : 0.0f;
+      std::string payload = std::to_string(store.revision()) + "|";
+      char token[32];
+      for (unsigned i = 0; i < paw::SETTING_COUNT; ++i) {
+        if (i) payload += ",";
+        std::snprintf(token, sizeof(token), "%.5f", next.v[i]);
+        payload += token;
+      }
+      bool ok = paw::apply_profile(payload);
+      id(battery_settings_state).publish_state(store.json());
+      const char *message = ok ? "Saved to flash" : store.message().c_str();
+      lv_label_set_text(id(pp_preview_message), message);
+      lv_label_set_text(id(pp_preview_message_advanced), message);
+- id: pp_refresh_live
+  then:
+  - lambda: !lambda |2
+
+      const bool fresh = id(have_shunt_reply) && uint32_t(millis()-id(last_shunt_reply)) < 15000U;
+      const auto &cfg = paw::settings_store().get().v;
+      char b[192];
+      std::snprintf(b,sizeof(b),"51.2V nominal | %.1fAh bank",cfg[paw::CAPACITY]);
+      lv_label_set_text(id(pp_battery_bank),b); lv_label_set_text(id(pp_history_bank),b);
+      const char *state=fresh?"Shunt connected":"Shunt not connected";
+      lv_label_set_text(id(pp_battery_state),state);lv_label_set_text(id(pp_history_state),state);
+      lv_label_set_text(id(pp_settings_state),state);lv_label_set_text(id(pp_settings_state_advanced),state);
+      const float v=id(battery_voltage).state, a=id(battery_current).state, ah=id(battery_remaining_ah).state;
+      const float soc=std::isfinite(ah)?fminf(100,fmaxf(0,ah/cfg[paw::CAPACITY]*100)):NAN;
+      auto setnum=[&](lv_obj_t *label,const char *format,float value){if(fresh && std::isfinite(value)){std::snprintf(b,sizeof(b),format,value);lv_label_set_text(label,b);}else lv_label_set_text(label,"--");};
+      setnum(id(pp_soc),"%.1f%%",soc);setnum(id(pp_remaining),"%.1f Ah remaining",ah);
+      setnum(id(pp_voltage_value),"%.2f V",v);setnum(id(pp_current_value),"%+.2f A",a);
+      setnum(id(pp_temp_value),"%.1f F",id(battery_temperature).state*1.8f+32);
+      setnum(id(pp_power),"%.0f W",std::fabs(v*a));
+      lv_label_set_text(id(pp_flow),!fresh?"NO SHUNT DATA":a>0.15f?"CHARGING":a< -0.15f?"DISCHARGING":"IDLE");
+      lv_label_set_text(id(pp_flow_note),!fresh?"Waiting for valid RS485 replies":a>0.15f?"Power flowing into your battery bank":a< -0.15f?"Power flowing out of your battery bank":"Battery power is near zero");
+      const auto flow=lv_color_hex(!fresh?0xA2B5C5:a>0.15f?0x61E4AA:a< -0.15f?0xFF7979:0xA2B5C5);
+      lv_obj_set_style_text_color(id(pp_flow),flow,0);lv_obj_set_style_text_color(id(pp_power),flow,0);lv_obj_set_style_text_color(id(pp_current_value),flow,0);
+      if(fresh && std::isfinite(soc)) {
+        lv_arc_set_value(id(pp_soc_arc),int(soc*10));
+        float f=fminf(1,fmaxf(0,(soc-20)/70));unsigned r,g;
+        if(f<0.5f){r=255;g=unsigned(80+f*2*148);}else{r=unsigned(255-(f-0.5f)*2*158);g=228;}
+        lv_obj_set_style_arc_color(id(pp_soc_arc),lv_color_hex((r<<16)|(g<<8)|80),LV_PART_INDICATOR);
+      } else lv_arc_set_value(id(pp_soc_arc),0);
+      static float draw=0,charge=0; static uint32_t sampled=0;
+      if(fresh && sampled!=id(last_shunt_reply)) {
+        sampled=id(last_shunt_reply);
+        if(a< -0.15f) draw=draw>0?draw*0.8f+(-a)*0.2f:-a;
+        if(a>0.15f) charge=charge>0?charge*0.8f+a*0.2f:a;
+      }
+      auto duration=[&](lv_obj_t *label,float hours){if(!fresh||!std::isfinite(hours)||hours<0){lv_label_set_text(label,"--");return;}if(hours>8760){lv_label_set_text(label,"> 1 year");return;}int m=int(hours*60+0.5f);std::snprintf(b,sizeof(b),"%dh %02dm",m/60,m%60);lv_label_set_text(label,b);};
+      duration(id(pp_time_empty),draw>0?ah/draw:NAN);
+      duration(id(pp_time_full),fresh && a>0.15f && charge>0?fmaxf(0,cfg[paw::CAPACITY]-ah)/charge:NAN);
+      lv_label_set_text(id(pp_can_status),paw::pylon_transport().status().c_str());
+      lv_label_set_text(id(pp_can_button_text),id(can_bench_output).state?"Disable CAN output":"Enable CAN output");
+      std::snprintf(b,sizeof(b),"Heap %.1f KiB | Largest block %.1f KiB | Loop %.0f ms",id(heap_free).state,id(heap_largest_block).state,id(device_loop_time).state);
+      lv_label_set_text(id(pp_device_stats),b);
+      auto now=id(battery_clock).now();
+      // Keep history buffers off the ESPHome task stack. Do not return/copy
+      // these large structs by value inside the screen refresh lambda.
+      static paw::EnergyStore store{};
+      static paw::PeakStore peaks{};
+      std::memcpy(&store, id(battery_energy_store).data(), sizeof(store));
+      if (store.version != 1) {
+        std::memset(&store, 0, sizeof(store));
+        store.version = 1;
+      }
+      std::memcpy(&peaks, id(battery_peak_store).data(), sizeof(peaks));
+      if (peaks.version != 1) {
+        std::memset(&peaks, 0, sizeof(peaks));
+        peaks.version = 1;
+      }
+      const paw::EnergyDay *today=nullptr;
+      if(now.is_valid())today=paw::find(store,paw::date_key(now.timestamp));
+      if(today){std::snprintf(b,sizeof(b),"%.2f kWh",today->charged_wh/1000);lv_label_set_text(id(pp_energy_value),b);}else lv_label_set_text(id(pp_energy_value),"--");
+      for(int i=0;i<4;++i){
+        const paw::EnergyDay *day=nullptr;int key=0;
+        if(now.is_valid()){key=paw::date_key(paw::day_start(now.timestamp,-i));day=paw::find(store,key);}
+        if(i<2){
+          lv_obj_t *values=i==0?id(pp_day_values_0):id(pp_day_values_1);
+          lv_obj_t *detail=i==0?id(pp_day_detail_0):id(pp_day_detail_1);
+          if(day){std::snprintf(b,sizeof(b),"%.2f in / %.2f out",day->charged_wh/1000,day->discharged_wh/1000);lv_label_set_text(values,b);
+            const auto *peak=paw::find_peak(peaks,key);
+            if(peak)std::snprintf(b,sizeof(b),"Peak +%.0f / -%.0f W | %.1fh",peak->charge_w,peak->discharge_w,day->seconds/3600);
+            else std::snprintf(b,sizeof(b),"%s | %.1fh recorded",day->partial?"Partial day":"Recorded",day->seconds/3600);
+            lv_label_set_text(detail,b);
+          }else{lv_label_set_text(values,"--");lv_label_set_text(detail,now.is_valid()?"No recorded data":"Waiting for clock");}
+        }else if(i==2){
+          if(day)std::snprintf(b,sizeof(b),"%04d-%02d-%02d   %.2f kWh in / %.2f out",key/10000,(key/100)%100,key%100,day->charged_wh/1000,day->discharged_wh/1000);
+          else std::snprintf(b,sizeof(b),"Earlier days: no recorded data");
+          lv_label_set_text(id(pp_history_row_1),b);
+        }
+      }
+      std::snprintf(b,sizeof(b),"Shunt age: %s | More history on webpage",fresh?"fresh":"unavailable");lv_label_set_text(id(pp_history_row_2),b);
+globals:
+- id: pp_edit_index
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: pp_edit_advanced
+  type: bool
+  restore_value: false
+  initial_value: 'false'
+interval:
+- interval: 1s
+  then:
+  - script.execute: pp_refresh_live
+esphome:
+  on_boot:
+  - priority: -200
+    then:
+    - lambda: !lambda |-
+        paw::settings_applied_hook() = [](){ id(pp_load_settings).execute(); };
+    - script.execute: pp_load_settings
+    - script.execute: pp_refresh_live

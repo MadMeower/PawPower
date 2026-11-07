@@ -1,0 +1,85 @@
+# Display-only SD diagnostics, minute CSV recording and confirmed file erasure.
+output:
+- platform: gpio
+  id: pp_sd_select
+  pin:
+    ch422g: panel_io
+    number: 4
+    mode: OUTPUT
+
+esphome:
+  includes:
+  - <pawpower_shared/sd_diagnostics.h>
+  on_boot:
+  - priority: -210
+    then:
+    - output.turn_off: pp_sd_select
+    - lambda: paw::sd_diagnostics().setup();
+
+esp32:
+  framework:
+    advanced:
+      include_builtin_idf_components:
+      - fatfs
+      - sdmmc
+      - esp_driver_sdspi
+      - esp_driver_spi
+    sdkconfig_options:
+      # ESP-IDF gates opendir/readdir/stat AND unlink behind this option.
+      CONFIG_VFS_SUPPORT_DIR: "y"
+      CONFIG_FATFS_LFN_HEAP: "y"
+      CONFIG_FATFS_API_ENCODING_UTF_8: "y"
+
+text_sensor:
+- platform: template
+  id: pp_sd_diagnostics
+  name: SD Card Diagnostics
+  update_interval: 1s
+  lambda: |-
+    static std::string previous;
+    auto current = paw::sd_diagnostics().json();
+    if (current == previous) return {};
+    previous = current;
+    return current;
+
+text:
+- platform: template
+  name: SD Log Read
+  id: pp_sd_log_read
+  mode: text
+  min_length: 14
+  max_length: 64
+  optimistic: false
+  set_action:
+  - lambda: paw::sd_diagnostics().request_export(x);
+- platform: template
+  name: SD Card Erase
+  id: pp_sd_erase
+  mode: text
+  min_length: 5
+  max_length: 5
+  optimistic: false
+  set_action:
+  - lambda: |-
+      paw::sd_diagnostics().request_erase(x);
+
+button:
+- platform: template
+  name: SD Card Refresh
+  on_press:
+  - lambda: paw::sd_diagnostics().request(false);
+- platform: template
+  name: SD Card Write Test
+  on_press:
+  - lambda: paw::sd_diagnostics().request(true);
+
+interval:
+- interval: 1s
+  then:
+  - lambda: |-
+      static paw::MinuteHistory history;
+      paw::MinuteRecord row;
+      auto now = id(battery_clock).now();
+      if (history.tick(millis(), now.timestamp, now.is_valid(), id(have_shunt_reply),
+          id(last_shunt_reply), id(battery_voltage).state, id(battery_current).state,
+          id(battery_soc).state, row)) paw::sd_diagnostics().record(row);
