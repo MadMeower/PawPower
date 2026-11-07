@@ -54,11 +54,11 @@ class PylonTransport {
     // Queueing is not proof of ACK. The status counters are checked next tick.
     if(state.tx_failed_count!=last_failed_){
       last_failed_=state.tx_failed_count;set_status("CAN transmit failure; check peer and termination");
-    }else if(!p.discharge_allowed && p.hot_hold)set_status("Active: high-temperature charge hold and low-voltage discharge hold");
+    }else if(!p.discharge_allowed && p.hot_hold)set_status("Active: high-temperature charge hold and SOC/voltage discharge hold");
     else if(p.hot_hold && p.cold_hold)set_status("Active: hot and cold charge holds; check temperature settings");
     else if(p.hot_hold)set_status("Active: high-temperature charge hold");
-    else if(!p.discharge_allowed && p.cold_hold)set_status("Active: cold charge hold and low-voltage discharge hold");
-    else if(!p.discharge_allowed)set_status("Active: low-voltage discharge hold");
+    else if(!p.discharge_allowed && p.cold_hold)set_status("Active: cold charge hold and SOC/voltage discharge hold");
+    else if(!p.discharge_allowed)set_status("Active: SOC/voltage discharge hold");
     else if(p.cold_hold)set_status("Active: cold-temperature charge hold");
     else if(p.soc_hold)set_status("Active: configured SOC charge hold");
     else set_status("Active: charging permitted");

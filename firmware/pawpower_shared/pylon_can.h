@@ -49,11 +49,13 @@ class PylonControl {
     else if(temperature<=v[HOT_RESUME_C])hot_hold_=false;
     if(soc>=v[STOP_SOC])soc_hold_=true;
     else if(soc<=v[RESUME_SOC])soc_hold_=false;
+    if(soc<=v[DISCHARGE_STOP_SOC])discharge_soc_hold_=true;
+    else if(soc>=v[DISCHARGE_RESUME_SOC])discharge_soc_hold_=false;
     if(volts<=v[CUTOFF_V])low_voltage_hold_=true;
     else if(volts>=v[RECOVERY_V])low_voltage_hold_=false;
   }
   void reject(){good_count_=0;cold_hold_=true;hot_hold_=true;}
-  void settings_changed(){good_count_=0;soc_hold_=false;low_voltage_hold_=false;cold_hold_=true;hot_hold_=true;}
+  void settings_changed(){good_count_=0;soc_hold_=false;low_voltage_hold_=false;discharge_soc_hold_=true;cold_hold_=true;hot_hold_=true;}
   bool ready(uint32_t ms) {
     if(!have_good_ || uint32_t(ms-last_good_)>=15000)good_count_=0;
     return good_count_>=3;
@@ -68,6 +70,7 @@ class PylonControl {
     p.cold_hold=v[COLD_ENABLED]!=0 && cold_hold_;
     p.hot_hold=v[HOT_ENABLED]!=0 && hot_hold_;
     if(soc_hold_ || p.cold_hold || p.hot_hold){p.charge_voltage=v[HOLD_V];p.charge_amps=0;p.charge_allowed=false;}
+    if(discharge_soc_hold_){p.discharge_amps=0;p.discharge_allowed=false;}
     if(low_voltage_hold_){p.discharge_amps=0;p.discharge_allowed=false;p.protection|=0x04;}
     if(volts_<=v[WARNING_V])p.warning|=0x04;
     return p;
@@ -77,7 +80,7 @@ class PylonControl {
  private:
   uint32_t last_good_=0;
   uint8_t good_count_=0;
-  bool have_good_=false,soc_hold_=false,low_voltage_hold_=false,cold_hold_=true,hot_hold_=true;
+  bool have_good_=false,soc_hold_=false,low_voltage_hold_=false,discharge_soc_hold_=true,cold_hold_=true,hot_hold_=true;
   float volts_=0,amps_=0,soc_=0,temperature_=0;
 };
 inline PylonControl &pylon_control(){static PylonControl c;return c;}

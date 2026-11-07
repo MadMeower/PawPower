@@ -10,9 +10,9 @@
 
 namespace paw {
 enum SettingIndex { CAPACITY, STOP_SOC, RESUME_SOC, CHARGE_V, HOLD_V,
-  CHARGE_A, DISCHARGE_A, CUTOFF_V, RECOVERY_V, WARNING_V, COLD_ENABLED, COLD_STOP_C, COLD_RESUME_C, HOT_ENABLED, HOT_STOP_C, HOT_RESUME_C, SETTING_COUNT };
+  CHARGE_A, DISCHARGE_A, CUTOFF_V, RECOVERY_V, WARNING_V, COLD_ENABLED, COLD_STOP_C, COLD_RESUME_C, HOT_ENABLED, HOT_STOP_C, HOT_RESUME_C, DISCHARGE_STOP_SOC, DISCHARGE_RESUME_SOC, SETTING_COUNT };
 struct BatterySettings {
-  std::array<float, SETTING_COUNT> v{{1120,95,93,56.8f,54,125,140,48,50.8f,49,1,2,5,1,45,40}};
+  std::array<float, SETTING_COUNT> v{{1120,95,93,56.8f,54,125,140,48,50.8f,49,1,2,5,1,45,40,20,25}};
 };
 inline const char *validate_settings(const BatterySettings &s) {
   const auto &v=s.v;
@@ -23,6 +23,8 @@ inline const char *validate_settings(const BatterySettings &s) {
   for(unsigned i=0;i<COLD_STOP_C;++i)
     if(std::fabs(v[i]*10-std::round(v[i]*10))>0.001f)return "Use at most one decimal place";
   if(v[RESUME_SOC]>v[STOP_SOC]-1)return "Resume SOC must be at least 1% below stop SOC";
+  for(unsigned i=DISCHARGE_STOP_SOC;i<=DISCHARGE_RESUME_SOC;++i) { if(v[i]<0 || v[i]>100)return "Discharge SOC must be between 0 and 100"; if(std::fabs(v[i]*10-std::round(v[i]*10))>0.001f)return "Use at most one decimal place"; }
+  if(v[DISCHARGE_RESUME_SOC]<v[DISCHARGE_STOP_SOC]+1)return "Discharge resume SOC must be at least 1% above stop SOC";
   if(v[CUTOFF_V]>=v[HOLD_V] || v[HOLD_V]>v[CHARGE_V])return "Require cutoff < hold voltage <= charge voltage";
   if(v[RECOVERY_V]<v[CUTOFF_V]+0.5f || v[RECOVERY_V]>=v[CHARGE_V])return "Recovery must be >= cutoff + 0.5 V and below charge voltage";
   if(v[WARNING_V]<v[CUTOFF_V] || v[WARNING_V]>v[RECOVERY_V])return "Warning voltage must be between cutoff and recovery";
@@ -33,11 +35,11 @@ inline const char *validate_settings(const BatterySettings &s) {
   return nullptr;
 }
 struct SettingsRecord {
-  uint32_t magic=0x50415734,version=3,revision=0;
+  uint32_t magic=0x50415735,version=4,revision=0;
   BatterySettings settings{};
   uint32_t checksum=0;
 };
-static_assert(sizeof(SettingsRecord)==80,"Settings storage format changed");
+static_assert(sizeof(SettingsRecord)==88,"Settings storage format changed");
 template<size_t N> struct LegacyRecord {
   uint32_t magic,version,revision;
   std::array<float,N> values;
@@ -45,6 +47,7 @@ template<size_t N> struct LegacyRecord {
 };
 using LegacySettingsRecord=LegacyRecord<10>;
 using ColdSettingsRecord=LegacyRecord<13>;
+using PreviousSettingsRecord=LegacyRecord<16>;
 static_assert(sizeof(LegacySettingsRecord)==56,"Legacy storage format changed");
 static_assert(sizeof(ColdSettingsRecord)==68,"Cold storage format changed");
 template<class T> inline uint32_t settings_checksum(const T &r) {
@@ -58,13 +61,21 @@ class SettingsStore {
   void setup() {
     ready_=esphome::global_preferences!=nullptr;
     if(!ready_){message_="Settings storage unavailable";return;}
-    preference_=esphome::global_preferences->make_preference<SettingsRecord>(0x50415734U,true);
+    preference_=esphome::global_preferences->make_preference<SettingsRecord>(0x50415735U,true);
     SettingsRecord loaded;
     if(preference_.load(&loaded)) {
-      if(loaded.magic==record_.magic && loaded.version==3 &&
+      if(loaded.magic==record_.magic && loaded.version==4 &&
          loaded.checksum==settings_checksum(loaded) && !validate_settings(loaded.settings)) {
         record_=loaded;message_="Settings restored from flash";saved_=true;
       } else message_="Invalid stored profile; review starting values and Apply";
+      return;
+    }
+    auto previous_pref=esphome::global_preferences->make_preference<PreviousSettingsRecord>(0x50415734U,true);
+    PreviousSettingsRecord previous{};
+    if(previous_pref.load(&previous)) {
+      if(previous.magic==0x50415734U && previous.version==3 &&
+         previous.checksum==settings_checksum(previous) && migrate(previous))return;
+      message_="Invalid previous profile; review starting values and Apply";
       return;
     }
     auto cold_pref=esphome::global_preferences->make_preference<ColdSettingsRecord>(0x50415733U,true);
@@ -101,7 +112,7 @@ class SettingsStore {
     for(unsigned i=0;i<SETTING_COUNT;++i){
       const size_t comma=payload.find(',',start);
       if((i<SETTING_COUNT-1 && comma==std::string::npos) ||
-         (i==SETTING_COUNT-1 && comma!=std::string::npos))return fail("Expected all sixteen settings together");
+         (i==SETTING_COUNT-1 && comma!=std::string::npos))return fail("Expected all eighteen settings together");
       const std::string token=payload.substr(start,comma==std::string::npos?comma:comma-start);
       if(token.empty() || token.size()>16 || token.find_first_not_of("0123456789.-")!=std::string::npos)
         return fail("Settings must be decimal numbers");
@@ -123,8 +134,8 @@ class SettingsStore {
   }
   std::string json()const {
     char b[768];const auto &v=get().v;
-    std::snprintf(b,sizeof(b),"{\"revision\":%lu,\"saved\":%s,\"values\":[%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f],\"message\":\"%s\"}",
-      static_cast<unsigned long>(revision()),saved_?"true":"false",v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9],v[10],v[11],v[12],v[13],v[14],v[15],message_.c_str());
+    std::snprintf(b,sizeof(b),"{\"revision\":%lu,\"saved\":%s,\"values\":[%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f],\"message\":\"%s\"}",
+      static_cast<unsigned long>(revision()),saved_?"true":"false",v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9],v[10],v[11],v[12],v[13],v[14],v[15],v[16],v[17],message_.c_str());
     return b;
   }
  private:
@@ -133,7 +144,7 @@ class SettingsStore {
     for(size_t i=0;i<N;++i)migrated.v[i]=legacy.values[i];
     if(validate_settings(migrated))return false;
     record_.settings=migrated;record_.revision=legacy.revision;
-    message_="Previous values retained; review high-temperature protection and Apply to resume CAN";
+    message_="Previous values retained; review discharge SOC stop/resume and Apply to resume CAN";
     return true;
   }
   bool fail(const char *message){message_=message;return false;}

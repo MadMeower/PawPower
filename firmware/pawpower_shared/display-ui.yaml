@@ -1412,6 +1412,86 @@ lvgl:
         - lvgl.page.show:
             id: pp_keypad_page
             animation: NONE
+    - label:
+        id: pp_edit_discharge_stop_soc_title
+        text: Discharge stop (%)
+        x: 24
+        y: 340
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_discharge_stop_soc
+        x: 264
+        y: 330
+        width: 112
+        height: 43
+        text: '20'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_20
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 8
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 14; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Discharge stop (%)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_discharge_stop_soc)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
+    - label:
+        id: pp_edit_discharge_resume_soc_title
+        text: Discharge resume (%)
+        x: 414
+        y: 340
+        width: 230
+        height: 24
+        text_font: montserrat_16
+        text_color: ${text_color}
+    - textarea:
+        id: pp_edit_discharge_resume_soc
+        x: 654
+        y: 330
+        width: 112
+        height: 43
+        text: '25'
+        one_line: true
+        max_length: 12
+        accepted_chars: 0123456789.-
+        text_font: montserrat_20
+        text_color: ${text_color}
+        bg_color: ${card_color}
+        bg_opa: 100%
+        border_color: 2833998
+        border_width: 1
+        radius: 7
+        pad_all: 8
+        on_click:
+        - lambda: !lambda |-
+            id(pp_edit_index) = 15; id(pp_edit_advanced) = false;
+        - lvgl.label.update:
+            id: pp_keypad_title
+            text: Discharge resume (%)
+        - lvgl.textarea.update:
+            id: pp_keypad_value
+            text: !lambda |-
+              return std::string(lv_textarea_get_text(id(pp_edit_discharge_resume_soc)));
+        - lvgl.page.show:
+            id: pp_keypad_page
+            animation: NONE
     - button:
         id: pp_settings_page_nav_battery
         x: 20
@@ -2124,6 +2204,8 @@ lvgl:
               case 10: lv_textarea_set_text(id(pp_edit_discharge_current), value); break;
               case 11: lv_textarea_set_text(id(pp_edit_cutoff_voltage), value); break;
               case 12: lv_textarea_set_text(id(pp_edit_recovery_voltage), value); break;
+              case 14: lv_textarea_set_text(id(pp_edit_discharge_stop_soc), value); break;
+              case 15: lv_textarea_set_text(id(pp_edit_discharge_resume_soc), value); break;
               case 13: lv_textarea_set_text(id(pp_edit_warning_voltage), value); break;
             }
         - *id001
@@ -2323,6 +2405,10 @@ script:
       lv_textarea_set_text(id(pp_edit_recovery_voltage), text);
       std::snprintf(text, sizeof(text), "%.1f", v[9]);
       lv_textarea_set_text(id(pp_edit_warning_voltage), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[16]);
+      lv_textarea_set_text(id(pp_edit_discharge_stop_soc), text);
+      std::snprintf(text, sizeof(text), "%.1f", v[17]);
+      lv_textarea_set_text(id(pp_edit_discharge_resume_soc), text);
       if (v[10] != 0) lv_obj_add_state(id(pp_edit_cold_enabled), LV_STATE_CHECKED); else lv_obj_remove_state(id(pp_edit_cold_enabled), LV_STATE_CHECKED);
       if (v[13] != 0) lv_obj_add_state(id(pp_edit_hot_enabled), LV_STATE_CHECKED); else lv_obj_remove_state(id(pp_edit_hot_enabled), LV_STATE_CHECKED);
       const char *message = paw::settings_store().confirmed() ? "Saved values loaded" : "Review defaults, then Save settings";
@@ -2448,6 +2534,22 @@ script:
         return;
       }
       next.v[9] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_discharge_stop_soc));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid discharge SOC");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid discharge SOC");
+        return;
+      }
+      next.v[16] = parsed;
+      raw = lv_textarea_get_text(id(pp_edit_discharge_resume_soc));
+      parsed = std::strtof(raw, &end);
+      if (raw == end || *end || !std::isfinite(parsed)) {
+        lv_label_set_text(id(pp_preview_message), "Invalid discharge SOC");
+        lv_label_set_text(id(pp_preview_message_advanced), "Invalid discharge SOC");
+        return;
+      }
+      next.v[17] = parsed;
       next.v[10] = lv_obj_has_state(id(pp_edit_cold_enabled), LV_STATE_CHECKED) ? 1.0f : 0.0f;
       next.v[13] = lv_obj_has_state(id(pp_edit_hot_enabled), LV_STATE_CHECKED) ? 1.0f : 0.0f;
       std::string payload = std::to_string(store.revision()) + "|";

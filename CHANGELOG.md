@@ -1,5 +1,14 @@
 # Changelog
 
+## Discharge SOC controls — 2026-11-07
+
+- Added configurable discharge SOC stop/resume to the web Battery settings and touchscreen Settings page 1; initial values are 20% / 25%, with at least 1 percentage point of hysteresis.
+- At/below stop, advertise zero discharge current and deny discharge over CAN. At/above resume, release the SOC hold. Existing voltage cutoff/recovery remains independently active as backup.
+- Discharge SOC hold starts active on boot and after applying settings until resume is reached. Existing stale-data and temperature protections remain active.
+- Profile version 4 retains previous settings through migration, adds the new thresholds, and requires reviewed Apply before CAN resumes. Existing history is unaffected.
+- Owner tested through the web interface: the EG4 6000XP successfully transferred to AC and returned to battery at the configured SOC thresholds. Exact test thresholds were not recorded. Touchscreen editing and voltage backup were not tested in this session.
+- JavaScript syntax and patch whitespace checks passed. No new firmware build was run by Codex in this session.
+
 ## Shared touchscreen firmware — 2026-11-06
 
 - Split board entry YAMLs from common shunt polling, settings, CAN, history and web dashboard.
