@@ -1,7 +1,9 @@
 #pragma once
 #include "pylon_can.h"
+#include "traffic_activity.h"
 #include "driver/twai.h"
 #include "esphome/core/log.h"
+#include "esphome/core/hal.h"
 #include <string>
 
 namespace paw {
@@ -12,6 +14,7 @@ class PylonTransport {
   bool setup(gpio_num_t tx=GPIO_NUM_15, gpio_num_t rx=GPIO_NUM_16) {
     twai_general_config_t general=TWAI_GENERAL_CONFIG_DEFAULT(tx,rx,TWAI_MODE_NORMAL);
     general.tx_queue_len=7;general.rx_queue_len=10;
+    general.alerts_enabled=TWAI_ALERT_TX_SUCCESS;
     twai_timing_config_t timing=TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t filter=TWAI_FILTER_CONFIG_ACCEPT_ALL();
     const auto err=twai_driver_install_v2(&general,&timing,&filter,&handle_);
@@ -65,8 +68,12 @@ class PylonTransport {
   }
   void poll() {
     if(!handle_)return;
+    uint32_t alerts=0;
+    if(twai_read_alerts_v2(handle_,&alerts,0)==ESP_OK && (alerts&TWAI_ALERT_TX_SUCCESS))
+      traffic_activity().mark(CAN_TX,esphome::millis());
     twai_message_t message{};
     for(unsigned i=0;i<8 && twai_receive_v2(handle_,&message,0)==ESP_OK;++i){
+      traffic_activity().mark(CAN_RX,esphome::millis());
       if(!message.extd && !message.rtr && message.identifier==0x305)
         ESP_LOGD("pylon","RX inverter heartbeat 0x305 (%u bytes)",unsigned(message.data_length_code));
     }

@@ -5,6 +5,18 @@ lvgl:
   touchscreens:
   - panel_touch
   buffer_size: 25%
+  resume_on_input: true
+  on_idle:
+    timeout: 15min
+    then:
+    - lvgl.pause:
+  on_pause:
+    then:
+    # EXIO2 is the existing shared LCD/backlight enable; keep RGB timing running.
+    - lambda: id(panel_io).digital_write(2, false);
+  on_resume:
+    then:
+    - lambda: id(panel_io).digital_write(2, true);
   default_font: montserrat_20
   pages:
   - id: pp_battery_page
@@ -39,6 +51,62 @@ lvgl:
         text_font: montserrat_14
         text_color: ${accent_color}
         text_align: RIGHT
+    - label:
+        id: pp_traffic_0
+        text: 485 TX
+        x: 470
+        y: 51
+        width: 74
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
+    - label:
+        id: pp_traffic_1
+        text: 485 RX
+        x: 548
+        y: 51
+        width: 74
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
+    - label:
+        id: pp_traffic_2
+        text: CAN TX
+        x: 626
+        y: 51
+        width: 74
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
+    - label:
+        id: pp_traffic_3
+        text: CAN RX
+        x: 704
+        y: 51
+        width: 74
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
     - arc:
         id: pp_soc_arc
         x: 36
@@ -2072,9 +2140,9 @@ lvgl:
         widgets:
         - label:
             id: pp_cookie_name
-            text: Cookie
+            text: Donut
             x: 80
-            y: 30
+            y: 20
             width: 640
             height: 56
             text_align: CENTER
@@ -2085,7 +2153,7 @@ lvgl:
             id: pp_cookie_title
             text: Chief Electron Inspector
             x: 80
-            y: 95
+            y: 85
             width: 640
             height: 32
             text_align: CENTER
@@ -2095,19 +2163,60 @@ lvgl:
         - image:
             id: pp_cookie_photo
             src: cookie_photo
-            x: 301
-            y: 130
+            x: 130
+            y: 125
             clickable: true
             on_click:
             - lvgl.page.show:
                 id: pp_battery_page
                 animation: NONE
         - label:
+            id: pp_donut_donate_title
+            text: Support Paw Power
+            x: 440
+            y: 125
+            width: 280
+            height: 28
+            text_align: CENTER
+            text_font: montserrat_22
+            text_color: ${accent_color}
+        - obj:
+            id: pp_donut_qr_background
+            x: 460
+            y: 158
+            width: 240
+            height: 240
+            bg_color: 0xFFFFFF
+            bg_opa: 100%
+            border_width: 0
+            radius: 0
+            pad_all: 0
+            scrollable: false
+            widgets:
+            - qrcode:
+                id: pp_donut_donation_qr
+                x: 20
+                y: 20
+                size: 200
+                dark_color: 0x000000
+                light_color: 0xFFFFFF
+                text: https://paypal.me/DonutMeow
+        - label:
+            id: pp_donut_donate_link
+            text: paypal.me/DonutMeow
+            x: 430
+            y: 408
+            width: 300
+            height: 28
+            text_align: CENTER
+            text_font: montserrat_20
+            text_color: ${text_color}
+        - label:
             id: pp_cookie_treats
             text: Payment accepted in treats.
-            x: 80
-            y: 375
-            width: 640
+            x: 40
+            y: 408
+            width: 400
             height: 30
             text_align: CENTER
             text_font: montserrat_22
@@ -2115,9 +2224,9 @@ lvgl:
             clickable: false
         - label:
             id: pp_cookie_exit
-            text: Tap Cookie to return
+            text: Tap Donut to return
             x: 80
-            y: 435
+            y: 445
             width: 640
             height: 22
             text_align: CENTER
@@ -2290,6 +2399,62 @@ lvgl:
         height: 55
         text_font: montserrat_16
         text_color: ${muted_color}
+    - label:
+        id: pp_traffic_controls_0
+        text: RS485 TX
+        x: 30
+        y: 370
+        width: 170
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
+    - label:
+        id: pp_traffic_controls_1
+        text: RS485 RX
+        x: 225
+        y: 370
+        width: 170
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
+    - label:
+        id: pp_traffic_controls_2
+        text: CAN TX
+        x: 420
+        y: 370
+        width: 170
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
+    - label:
+        id: pp_traffic_controls_3
+        text: CAN RX
+        x: 615
+        y: 370
+        width: 170
+        height: 24
+        text_align: CENTER
+        text_font: montserrat_14
+        text_color: '0x64788C'
+        bg_color: ${card_color}
+        bg_opa: 100%
+        radius: 4
+        pad_all: 2
     - button:
         id: pp_can_page_nav_battery
         x: 20
@@ -2375,6 +2540,25 @@ lvgl:
             id: pp_settings_page
             animation: NONE
 script:
+- id: pp_refresh_traffic
+  then:
+  - lambda: |-
+      static uint8_t previous = 0xFF;
+      const uint8_t current = paw::traffic_activity().mask(millis());
+      if (current == previous) return;
+      lv_obj_t *labels[4][2] = {
+        {id(pp_traffic_0), id(pp_traffic_controls_0)},
+        {id(pp_traffic_1), id(pp_traffic_controls_1)},
+        {id(pp_traffic_2), id(pp_traffic_controls_2)},
+        {id(pp_traffic_3), id(pp_traffic_controls_3)}
+      };
+      for (unsigned i=0; i<4; ++i) {
+        if (!((current ^ previous) & (1U << i))) continue;
+        const bool active = current & (1U << i);
+        const auto color = lv_color_hex(active ? ((i==0 || i==2) ? 0xFFD23F : 0x61E4AA) : 0x64788C);
+        for (auto *label : labels[i]) lv_obj_set_style_text_color(label, color, LV_PART_MAIN);
+      }
+      previous = current;
 - id: pp_load_settings
   then:
   - lambda: !lambda |-
@@ -2656,6 +2840,9 @@ globals:
   restore_value: false
   initial_value: 'false'
 interval:
+- interval: 100ms
+  then:
+  - script.execute: pp_refresh_traffic
 - interval: 1s
   then:
   - script.execute: pp_refresh_live

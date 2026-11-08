@@ -74,14 +74,16 @@ touchscreen:
   - lambda: ESP_LOGI("paw_touch", "Touch x=%d y=%d", touch.x, touch.y);
 image:
 - platform: file
-  file: pawpower_shared/Cookie.jpg
+  file: pawpower_shared/Donut.png
   id: cookie_photo
   type: RGB565
-  resize: 198x240
+  resize: 231x280
 esp32:
   flash_size: 16MB
   framework:
     sdkconfig_options:
+      # RGB bounce buffering benefits from 64-byte data cache lines.
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
       # Let ordinary C++ allocations (history JSON and web/API buffers) use
       # PSRAM, instead of exhausting internal heap while PSRAM sits free.
       CONFIG_SPIRAM_USE_CAPS_ALLOC: "n"

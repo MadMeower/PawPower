@@ -20,10 +20,13 @@ uart:
   rx_pin: GPIO${rs485_rx_pin}
   baud_rate: 115200
   debug:
-    direction: RX
+    direction: BOTH
     dummy_receiver: true
     sequence:
     - lambda: !lambda |-
+        if (!bytes.empty()) paw::traffic_activity().mark(
+          direction == uart::UART_DIRECTION_TX ? paw::RS485_TX : paw::RS485_RX, millis());
+        if (direction == uart::UART_DIRECTION_TX) return;
         static std::string line;
         static bool overflow = false;
         for (uint8_t byte : bytes) {
@@ -196,6 +199,21 @@ sensor:
   accuracy_decimals: 0
   update_interval: never
 text_sensor:
+- platform: template
+  name: Bus Traffic Activity
+  id: bus_traffic_activity
+  update_interval: 500ms
+  lambda: |-
+    static const uint32_t boot = esphome::random_uint32();
+    const auto &counts = paw::traffic_activity().sequence;
+    char value[160];
+    std::snprintf(value, sizeof(value), "{\"boot\":%lu,\"counts\":[%lu,%lu,%lu,%lu]}",
+      static_cast<unsigned long>(boot), static_cast<unsigned long>(counts[0]),
+      static_cast<unsigned long>(counts[1]), static_cast<unsigned long>(counts[2]),
+      static_cast<unsigned long>(counts[3]));
+    std::string current(value);
+    if (id(bus_traffic_activity).has_state() && current == id(bus_traffic_activity).state) return {};
+    return current;
 - platform: template
   name: Battery Settings State
   id: battery_settings_state
