@@ -19,6 +19,217 @@
       x: 50+32*Math.sin(angle), y: 50+32*Math.cos(angle) };
   }
   // End seasonal calendar calculation.
+  // Minute history helpers. UTC positions keep DST's repeated hour unambiguous.
+  function historyDayBounds(date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Choose a valid date.');
+    const midday = Date.parse(date + 'T12:00:00Z');
+    if (!Number.isFinite(midday) || new Date(midday).toISOString().slice(0,10) !== date) throw new Error('Choose a valid date.');
+    const formatter = new Intl.DateTimeFormat('en-US', {timeZone:'America/Detroit',year:'numeric',month:'2-digit',day:'2-digit'});
+    const localDate = ms => {
+      const parts = formatter.formatToParts(new Date(ms));
+      const get = type => parts.find(p => p.type === type).value;
+      return `${get('year')}-${get('month')}-${get('day')}`;
+    };
+    const boundary = target => {
+      let low = Math.floor((midday-36*3600000)/60000), high = Math.ceil((midday+36*3600000)/60000);
+      while (low < high) {
+        const middle = Math.floor((low+high)/2);
+        if (localDate(middle*60000) < target) low = middle+1; else high = middle;
+      }
+      return low*60000;
+    };
+    return {start:boundary(date), end:boundary(new Date(midday+86400000).toISOString().slice(0,10))};
+  }
+  function parseMinuteHistory(csv, date) {
+    const bounds = historyDayBounds(date);
+    const header = 'utc_start,local_start,coverage_s,quality,soc_pct,volts,amps,watts,charged_wh,discharged_wh';
+    const lines = csv.replace(/^\uFEFF/,'').split(/\r?\n/);
+    if (lines.shift() !== header) throw new Error('Unsupported battery history CSV header.');
+    let invalid=0, duplicates=0;
+    // An unterminated final row may be an interrupted append, even if it looks numeric.
+    if (!csv.endsWith('\n') && lines.length) {if(lines.pop().trim()) invalid++;}
+    const byTime = new Map();
+    const qualities = new Set(['complete','partial','startup_partial','clock_gap','missing']);
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const cells = line.split(',');
+      const time = Date.parse(cells[0]);
+      const coverage = cells[2]?.trim() ? Number(cells[2]) : NaN;
+      if (cells.length !== 10 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$/.test(cells[0]) ||
+          !Number.isFinite(time) || new Date(time).toISOString().replace('.000Z','Z') !== cells[0] ||
+          !Number.isFinite(coverage) || coverage<0 || coverage>62 || !qualities.has(cells[3])) {invalid++;continue;}
+      if (time<bounds.start || time>=bounds.end) {invalid++;continue;}
+      const numbers = cells.slice(4).map(v => v.trim()==='' ? null : Number(v));
+      const missing = cells[3]==='missing';
+      if ((missing && (coverage!==0 || numbers.some(v=>v!==null))) ||
+          (!missing && (coverage<=0 || numbers.some(v=>v===null || !Number.isFinite(v) || Math.abs(v)>1e9) ||
+           numbers[0]<0 || numbers[0]>100 || numbers[4]<0 || numbers[5]<0))) {invalid++;continue;}
+      const row = {time,coverage,quality:cells[3],valid:!missing,soc:numbers[0],watts:numbers[3],
+        chargedWh:numbers[4],dischargedWh:numbers[5],complete:cells[3]==='complete' && coverage>=59.5};
+      if (byTime.has(time)) duplicates++;
+      byTime.set(time,row); // Most recent record wins after clock corrections/restarts.
+    }
+    const rows = [...byTime.values()].sort((a,b)=>a.time-b.time);
+    const valid = rows.filter(r=>r.valid);
+    return {date,...bounds,rows,byTime,invalid,duplicates,validCount:valid.length,
+      partialCount:valid.filter(r=>!r.complete).length,missingCount:rows.filter(r=>!r.valid).length,
+      coverage:valid.reduce((n,r)=>n+r.coverage,0),
+      chargedWh:valid.reduce((n,r)=>n+r.chargedWh,0),dischargedWh:valid.reduce((n,r)=>n+r.dischargedWh,0)};
+  }
+  function historyRuns(model) {
+    const runs = []; let run = [];
+    for (const row of model.rows) {
+      if (!row.valid) {if(run.length)runs.push(run);run=[];continue;}
+      if (!row.complete) {if(run.length)runs.push(run);runs.push([row]);run=[];continue;}
+      if (run.length && row.time-run[run.length-1].time!==60000) {runs.push(run);run=[];}
+      run.push(row);
+    }
+    if(run.length)runs.push(run);
+    return runs;
+  }
+  // End minute history helpers.
+  // Pong stays in this browser: no device requests or persistent scores.
+  function newPongMatch() {
+    return {player:160,ai:160,x:320,y:160,vx:-240,vy:95,you:0,donut:0,wait:0.6,winner:''};
+  }
+  function stepPong(s, dt, target, sound=()=>{}) {
+    if(s.winner)return;
+    dt=Math.max(0,Math.min(dt,0.025));
+    const clamp=y=>Math.max(34,Math.min(286,y));
+    s.player=clamp(s.player+Math.max(-360*dt,Math.min(360*dt,target-s.player)));
+    s.ai=clamp(s.ai+Math.max(-190*dt,Math.min(190*dt,(s.vx>0?s.y:160)-s.ai)));
+    if(s.wait>0){s.wait=Math.max(0,s.wait-dt);return;}
+    s.x+=s.vx*dt;s.y+=s.vy*dt;
+    if(s.y<7){s.y=14-s.y;s.vy=Math.abs(s.vy);sound('wall');}
+    if(s.y>313){s.y=626-s.y;s.vy=-Math.abs(s.vy);sound('wall');}
+    const hit=(center,direction)=>{
+      const angle=Math.max(-1,Math.min(1,(s.y-center)/34))*1.05;
+      const speed=Math.min(430,Math.hypot(s.vx,s.vy)+18);
+      s.vx=direction*speed*Math.cos(angle);s.vy=speed*Math.sin(angle);
+      sound('hit');
+    };
+    if(s.vx<0 && s.x<=37 && s.x>=20 && Math.abs(s.y-s.player)<=39){s.x=37;hit(s.player,1);}
+    if(s.vx>0 && s.x>=603 && s.x<=620 && Math.abs(s.y-s.ai)<=39){s.x=603;hit(s.ai,-1);}
+    if(s.x< -7 || s.x>647){
+      const playerPoint=s.x>647;
+      if(playerPoint)s.you++;else s.donut++;
+      if(s.you>=7 || s.donut>=7)s.winner=s.you>=7?'You win!':'Donut wins!';
+      sound(s.donut>=7?'meow':playerPoint?'point':'miss');
+      s.x=320;s.y=160;s.vx=playerPoint?240:-240;s.vy=(s.you+s.donut)%2?95:-95;s.wait=0.7;
+    }
+  }
+  function createPongAudio(host) {
+    const Audio=host.AudioContext || host.webkitAudioContext;
+    let audio=null,enabled=true;
+    const voices=new Set();
+    function stop(){
+      for(const voice of voices){try{voice.osc.stop();}catch(_){}voice.osc.disconnect();voice.gain.disconnect();}
+      voices.clear();
+    }
+    return {
+      available:!!Audio,
+      get enabled(){return enabled;},
+      setEnabled(value){enabled=value;if(!enabled)stop();},
+      unlock(){
+        if(!enabled || !Audio)return;
+        try{
+          if(!audio)audio=new Audio();
+          if(audio.state==='suspended')audio.resume().catch(()=>{});
+        }catch(_){/* Audio failure must never interrupt the dashboard or game. */}
+      },
+      tone(kind){
+        if(!enabled || !audio || audio.state!=='running')return;
+        try{
+          const osc=audio.createOscillator(),gain=audio.createGain(),now=audio.currentTime;
+          const meow=kind==='meow',duration=meow?0.8:kind==='hit'||kind==='wall'?0.055:0.18;
+          osc.type=meow?'triangle':'square';
+          osc.frequency.setValueAtTime(meow?420:kind==='hit'?520:kind==='wall'?340:kind==='point'?880:220,now);
+          if(meow){
+            // A cartoon "mee-ow": rise into the vowel, then glide down.
+            osc.frequency.exponentialRampToValueAtTime(820,now+0.12);
+            osc.frequency.exponentialRampToValueAtTime(640,now+0.32);
+            osc.frequency.exponentialRampToValueAtTime(210,now+duration);
+          }
+          gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(meow?0.075:0.035,now+(meow?0.04:0.004));
+          if(meow)gain.gain.linearRampToValueAtTime(0.05,now+0.35);
+          gain.gain.exponentialRampToValueAtTime(0.0001,now+duration);
+          osc.connect(gain);gain.connect(audio.destination);
+          const voice={osc,gain};voices.add(voice);
+          osc.onended=()=>{voices.delete(voice);osc.disconnect();gain.disconnect();};
+          osc.start(now);osc.stop(now+duration+0.01);
+        }catch(_){}
+      },
+      stop
+    };
+  }
+  function mountPong() {
+    const panel=document.createElement('details');
+    panel.className='history';panel.id='paw-pong';
+    panel.innerHTML=`<summary>Paw Pong · Play against Donut</summary>
+      <p class="note">First to 7. Move with your mouse or drag on the court. Keyboard: ↑ / ↓ or W / S while the court is focused.</p>
+      <p id="pong-score" role="status" aria-live="polite">You 0 · Donut 0</p>
+      <canvas id="pong-court" width="640" height="320" tabindex="0" role="img" aria-label="Pong court. You control the left paddle; Donut controls the right."
+        style="display:block;width:100%;max-width:640px;aspect-ratio:2;background:#091820;border:1px solid #38775c;border-radius:12px;touch-action:none">Pong requires a browser with canvas support.</canvas>
+      <div class="settings-actions"><button id="pong-play" type="button">Start game</button><button id="pong-reset" type="button">New game</button><button id="pong-sound" type="button" aria-pressed="true">Sound: on</button></div>
+      <p class="note">A little fun while the batteries charge.</p>`;
+    document.querySelector('main').insertBefore(panel,document.querySelector('footer'));
+    const canvas=panel.querySelector('canvas'),ctx=canvas.getContext('2d');
+    const play=panel.querySelector('#pong-play'),reset=panel.querySelector('#pong-reset'),score=panel.querySelector('#pong-score');
+    const soundButton=panel.querySelector('#pong-sound'),audio=createPongAudio(window);
+    if(!audio.available){soundButton.disabled=true;soundButton.textContent='Sound unavailable';soundButton.setAttribute('aria-pressed','false');}
+    soundButton.onclick=()=>{
+      audio.setEnabled(!audio.enabled);soundButton.textContent=audio.enabled?'Sound: on':'Sound: off';
+      soundButton.setAttribute('aria-pressed',String(audio.enabled));
+      if(audio.enabled)audio.unlock();
+    };
+    if(!ctx){play.disabled=true;reset.disabled=true;score.textContent='Canvas is unavailable in this browser.';return;}
+    let state=newPongMatch(),running=false,frame=0,last=0,target=160,keys=new Set(),lastScore='';
+    function draw(){
+      ctx.fillStyle='#091820';ctx.fillRect(0,0,640,320);
+      ctx.strokeStyle='#29434c';ctx.setLineDash([7,9]);ctx.beginPath();ctx.moveTo(320,12);ctx.lineTo(320,308);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#64e5b0';ctx.fillRect(20,state.player-34,10,68);
+      ctx.fillStyle='#f0ba65';ctx.fillRect(610,state.ai-34,10,68);
+      ctx.fillStyle='#f4f7fa';ctx.beginPath();ctx.arc(state.x,state.y,7,0,Math.PI*2);ctx.fill();
+      const text=`You ${state.you} · Donut ${state.donut}${state.winner?' · '+state.winner:''}`;
+      if(text!==lastScore){score.textContent=text;lastScore=text;}
+      if(!running || state.winner){
+        ctx.fillStyle='rgba(9,24,32,0.8)';ctx.fillRect(120,125,400,70);
+        ctx.fillStyle='#f4f7fa';ctx.font='22px system-ui';ctx.textAlign='center';
+        ctx.fillText(state.winner || (state.you+state.donut?'Paused':'Ready to play?'),320,168);
+      }
+    }
+    function pause(silence=true){running=false;cancelAnimationFrame(frame);frame=0;keys.clear();if(silence)audio.stop();play.textContent=state.winner?'Play again':'Resume game';draw();}
+    function tick(now){
+      if(!running)return;
+      const elapsed=Math.min(Math.max((now-last)/1000,0),0.05);last=now;
+      // Small steps prevent fast balls crossing a paddle between frames.
+      const steps=Math.max(1,Math.ceil(elapsed/0.008)),dt=elapsed/steps;
+      for(let i=0;i<steps;i++){
+        if(keys.size)target=state.player+((keys.has('ArrowDown')||keys.has('s')?1:0)-(keys.has('ArrowUp')||keys.has('w')?1:0))*360*dt;
+        stepPong(state,dt,target,kind=>audio.tone(kind));
+      }
+      if(state.winner){pause(false);return;}
+      draw();frame=requestAnimationFrame(tick);
+    }
+    play.onclick=()=>{
+      if(running){pause();return;}
+      audio.unlock();
+      if(state.winner){state=newPongMatch();target=160;}
+      running=true;last=performance.now();play.textContent='Pause game';canvas.focus({preventScroll:true});frame=requestAnimationFrame(tick);
+    };
+    reset.onclick=()=>{pause();state=newPongMatch();target=160;play.textContent='Start game';draw();};
+    const point=event=>{const box=canvas.getBoundingClientRect();target=Math.max(34,Math.min(286,(event.clientY-box.top)*320/box.height));};
+    canvas.onpointerdown=event=>{event.preventDefault();canvas.focus({preventScroll:true});canvas.setPointerCapture(event.pointerId);point(event);};
+    canvas.onpointermove=event=>{if(event.pointerType==='mouse'||canvas.hasPointerCapture(event.pointerId))point(event);};
+    canvas.onpointerup=event=>{if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);};
+    canvas.onkeydown=event=>{const key=event.key.length===1?event.key.toLowerCase():event.key;if(['ArrowUp','ArrowDown','w','s'].includes(key)){event.preventDefault();keys.add(key);}};
+    canvas.onkeyup=event=>{keys.delete(event.key.length===1?event.key.toLowerCase():event.key);};
+    canvas.onblur=()=>keys.clear();
+    panel.addEventListener('toggle',()=>{if(!panel.open)pause();});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+    window.addEventListener('blur',()=>{if(running)pause();});
+    draw();
+  }
   function boot() {
     document.title = 'Paw Power | Battery';
     let viewport = document.querySelector('meta[name="viewport"]');
@@ -31,6 +242,8 @@
       main{max-width:960px;margin:auto;padding:20px 20px}header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}
       .header-title{flex:1;min-width:0}h1{font-size:24px;letter-spacing:-1px;margin:0 0 3px}.header-title p{margin:0;font-size:12px}p{color:#93a6b8;margin:5px 0;font-size:14px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:0;flex:none}.brand-mark{width:48px;height:48px;flex:none}.eyebrow{font-size:11px;letter-spacing:3px;color:#64e5b0;font-weight:700}
       #status{font-size:12px;border:1px solid #334557;padding:9px 13px;border-radius:30px;color:#a3b4c7;white-space:nowrap}
+      .traffic-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 14px;font-size:11px;color:#93a6b8}.traffic-indicator{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #263748;border-radius:20px;background:#131e2b;color:#8296a8}.traffic-indicator::before{content:'';width:8px;height:8px;flex:none;border-radius:50%;background:#3b4d5d}.traffic-indicator.active.tx{color:#ffd23f}.traffic-indicator.active.rx{color:#61e4aa}.traffic-indicator.active.tx::before{background:#ffd23f;box-shadow:0 0 7px #ffd23f80}.traffic-indicator.active.rx::before{background:#61e4aa;box-shadow:0 0 7px #61e4aa80}
+      .history-chart-wrap{overflow-x:auto;margin-top:8px}.history-chart{display:block;width:100%;min-width:700px;height:auto}.history-graph-label{font-size:13px;margin-top:16px;color:#cfdae6}.graph-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.graph-controls input{background:#131e2b;color:#eff5fc;border:1px solid #536779;border-radius:8px;padding:8px;font:inherit}.graph-summary{font-size:13px;line-height:1.7;margin-top:12px;color:#cfdae6}#history-hover{min-height:30px}
       .panel{background:#131e2be8;border:1px solid #263748;border-radius:24px}.hero{display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:22px;margin-bottom:14px;gap:24px}
       .ring{width:230px;height:230px;position:relative;margin:auto}.ring svg{width:100%;height:100%;transform:rotate(-90deg)}circle{fill:none;stroke-width:13}.track{stroke:#253747}#arc{stroke:#64e5b0;stroke-linecap:round;transition:stroke-dasharray .7s,stroke .7s}
       .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}.percent{font-size:56px;font-weight:650;letter-spacing:-3px}.percent small{font-size:25px;color:#9aafbd;letter-spacing:0}.caption{color:#9aafbd;font-size:13px}
@@ -56,6 +269,47 @@
       <section class="panel season-panel" aria-label="Chasing the Sun seasonal cycle"><svg class="season-dial" viewBox="0 0 100 100" role="img" aria-label="Annual daylight cycle: summer at top, winter at bottom"><circle class="season-track" cx="50" cy="50" r="32"/><text x="50" y="10" text-anchor="middle">SUMMER</text><text x="50" y="98" text-anchor="middle">WINTER</text><circle id="season-marker" class="season-dot" cx="50" cy="82" r="5"/></svg><div class="season-info"><div class="season-title">Chasing the Sun</div><div id="season-count" class="season-count">Waiting for date…</div><div id="season-direction" class="season-direction"></div><div class="season-note">Northern hemisphere · Calendar guide: Jun 21 / Dec 21 · Not a solar forecast</div></div></section>
       <details class="history"><summary>Disconnects · Shunt <span id="shunt-drops">—</span> / Webpage <span id="web-drops">0</span> today</summary><p class="note" id="shunt-last-drop">Shunt: waiting for history</p><p class="note" id="web-last-drop">Webpage: no drops recorded</p><div class="history-scroll"><table><thead><tr><th>Date</th><th>Shunt drops</th><th>Offline</th><th>Webpage drops</th><th>Offline</th></tr></thead><tbody id="disconnect-history"></tbody></table></div><p class="note">Shunt: no valid reply for 20 seconds. Webpage: event-stream error or 15 seconds without events. Each outage counts once. Webpage records belong to this browser; closed-page time and ESP32 downtime are not measured. Michigan dates.</p></details><details class="history"><summary>CAN output · Pylontech</summary><p class="note">500 kbps · Pylontech · <span id="can-state">Waiting for state</span></p><p class="note" id="can-output-status">Waiting for CAN status</p><button id="can-toggle" type="button">Enable CAN output</button><p class="note">Enables after 3 fresh shunt replies. Pauses on stale data and resumes automatically. Last on/off choice is saved. <span id="can-soc-rules">SOC rules: waiting for settings.</span></p></details><details class="history" id="battery-settings"><summary>Battery settings · Saved on device</summary><p class="note">48V LiFePO₄ profiles only. Match these limits to your battery and inverter specifications. Editing does nothing until Apply saves the complete profile. First installation or protection upgrade requires a reviewed Apply before CAN can run. Existing inverter limits still apply.</p><form id="settings-form"><fieldset id="settings-fields" disabled style="border:0;padding:0;margin:0"><div class="settings-grid" id="settings-grid"></div><div class="settings-actions"><button type="submit" id="settings-apply">Apply &amp; save to flash</button><button type="button" id="settings-reload">Reload saved values</button></div></fieldset></form><p id="settings-message" role="status" aria-live="polite">Waiting for device settings…</p><p class="note">SOC is calculated from remaining Ah / configured capacity. This does not recalibrate or reprogram the Junctek shunt. A 100% SOC stop still requires suitable voltage limits. Hold voltage is advertised while charging is disabled; it is not an active float stage. Current limits are bank totals, not per battery. Temperature protection blocks charging only. At startup or after rejected/stale readings, each enabled protection must reach its resume threshold. Place the probe on a representative battery.</p></details><details class="history"><summary>Device memory</summary><p class="note">Free heap: <span id="heap-free">—</span> KiB · Largest free block: <span id="heap-block">—</span> KiB · Max loop interval: <span id="loop-ms">—</span> ms</p><p class="note">Live working memory, not firmware size or CPU utilization. Bluetooth disabled.</p></details><footer><span>Local monitor · Refreshes every 5 seconds</span><span id="updated">Waiting for live data</span></footer></main>`;
     const $ = id => document.getElementById(id);
+    mountPong();
+    // Web traffic indicators use event sequences, independent of screen blink latches.
+    const trafficBar = document.createElement('section');
+    trafficBar.className = 'traffic-bar';
+    trafficBar.setAttribute('aria-label', 'RS485 and CAN traffic activity');
+    trafficBar.innerHTML = `<span id="traffic-caption">Bus traffic · waiting for device</span>
+      <span id="traffic-0" class="traffic-indicator tx" title="Outgoing RS485 bytes">RS485 TX</span>
+      <span id="traffic-1" class="traffic-indicator rx" title="Incoming RS485 bytes, including invalid replies">RS485 RX</span>
+      <span id="traffic-2" class="traffic-indicator tx" title="CAN controller reports successful transmission">CAN TX</span>
+      <span id="traffic-3" class="traffic-indicator rx" title="Received CAN frames">CAN RX</span>`;
+    document.querySelector('main').insertBefore(trafficBar, document.querySelector('main > .hero'));
+    let trafficState = null;
+    const trafficTimers = [null, null, null, null];
+    function clearTraffic() {
+      trafficState = null;
+      trafficTimers.forEach((timer, i) => {
+        if (timer !== null) clearTimeout(timer);
+        trafficTimers[i] = null; $('traffic-' + i).classList.remove('active');
+      });
+      $('traffic-caption').textContent = 'Bus traffic · disconnected';
+    }
+    function receiveTraffic(data) {
+      let next; try { next = JSON.parse(data.state); } catch (_) { return; }
+      const uint = n => Number.isInteger(n) && n >= 0 && n <= 0xffffffff;
+      if (!uint(next.boot) || !Array.isArray(next.counts) || next.counts.length !== 4 || !next.counts.every(uint)) return;
+      // Retained state on initial connection/reboot is a baseline, not new traffic.
+      if (!trafficState || next.boot !== trafficState.boot) {
+        clearTraffic(); trafficState = next;
+      } else {
+        next.counts.forEach((count, i) => {
+          if (count === trafficState.counts[i]) return;
+          if (trafficTimers[i] !== null) clearTimeout(trafficTimers[i]);
+          $('traffic-' + i).classList.add('active');
+          trafficTimers[i] = setTimeout(() => {
+            $('traffic-' + i).classList.remove('active'); trafficTimers[i] = null;
+          }, 500);
+        });
+        trafficState = next;
+      }
+      $('traffic-caption').textContent = 'Bus traffic · TX amber / RX green';
+    }
     // Display firmware announces this optional panel through its SD entity.
     const sdPanel = document.createElement('details');
     sdPanel.className = 'history'; sdPanel.hidden = true;
@@ -77,6 +331,91 @@
       <button id="sd-erase" type="button" disabled style="background:#ff7979">Erase SD card files</button>
       <button id="sd-erase-cancel" type="button">Cancel</button></details>`;
     document.querySelector('main').insertBefore(sdPanel, document.querySelector('main > footer'));
+    const graphPanel = document.createElement('section');
+    graphPanel.className = 'panel energy-panel'; graphPanel.hidden = true;
+    graphPanel.innerHTML = `<div class="energy-heading">Battery history graphs <span>Daily SD records · Michigan time</span></div>
+      <div class="graph-controls"><label for="history-date">Day</label><input id="history-date" type="date">
+      <button id="history-load" type="button" disabled>Show / refresh graphs</button></div>
+      <p id="history-load-status" class="note" role="status">Choose a day to load its recorded history.</p>
+      <div id="history-summary" class="graph-summary"></div>
+      <div class="history-graph-label">Battery power (kW) · Green charging / red discharging</div>
+      <div class="history-chart-wrap"><svg id="history-power" class="history-chart" viewBox="0 0 900 230" tabindex="0" role="img" aria-label="Daily battery power. Use left and right arrows to inspect minutes."></svg></div>
+      <div class="history-graph-label">State of charge (%)</div>
+      <div class="history-chart-wrap"><svg id="history-soc" class="history-chart" viewBox="0 0 900 230" tabindex="0" role="img" aria-label="Daily battery SOC. Use left and right arrows to inspect minutes."></svg></div>
+      <p id="history-hover" class="note"></p>
+      <p class="note">Solid lines join consecutive complete minutes. Dots show partial or isolated records. Missing and unrecorded periods are gaps. Move over a graph, tap it, or use arrow keys to inspect. Scroll charts sideways on small screens. Use Show / refresh graphs for the latest records.</p>`;
+    document.querySelector('main').insertBefore(graphPanel, document.querySelector('main > .season-panel'));
+    let historyModel = null, historyCursor = 0;
+    const historyTimeFormatter = new Intl.DateTimeFormat('en-US', {timeZone:'America/Detroit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZoneName:'short'});
+    const historyTime = ms => historyTimeFormatter.format(new Date(ms));
+    function renderHistoryPlot(model, key) {
+      const svg = $(key==='watts' ? 'history-power' : 'history-soc');
+      const left=65, right=880, top=16, bottom=193;
+      let limit=100;
+      if (key==='watts') {
+        const maximum = model.rows.reduce((n,r)=>r.valid?Math.max(n,Math.abs(r.watts)):n,1000);
+        const magnitude=10**Math.floor(Math.log10(maximum));
+        limit=[1,2,5,10].find(n=>n*magnitude>=maximum)*magnitude;
+      }
+      const min=key==='watts'?-limit:0, max=limit;
+      const x=time=>left+(time+30000-model.start)/(model.end-model.start)*(right-left);
+      const y=value=>bottom-(value-min)/(max-min)*(bottom-top);
+      const number = n => n.toFixed(2);
+      let markup='';
+      for (let i=0;i<5;++i) {
+        const value=min+(max-min)*i/4, at=y(value);
+        const label=key==='watts'?(value/1000).toFixed(1).replace(/\.0$/,''):String(value)+'%';
+        markup+=`<line x1="${left}" x2="${right}" y1="${number(at)}" y2="${number(at)}" stroke="#2b3b4b"/><text x="${left-10}" y="${number(at+4)}" fill="#a9bbca" font-size="13" text-anchor="end">${label}</text>`;
+        const time=model.start+(model.end-model.start)*i/4, px=left+(right-left)*i/4;
+        markup+=`<text x="${number(px)}" y="218" fill="#a9bbca" font-size="12" text-anchor="${i===0?'start':i===4?'end':'middle'}">${historyTime(time)}</text>`;
+      }
+      const runs=historyRuns(model);
+      const path=runs.filter(run=>run.length>1).map(run=>run.map((r,i)=>`${i?'L':'M'}${number(x(r.time))},${number(y(r[key]))}`).join(' ')).join(' ');
+      if(key==='watts') {
+        const zero=y(0);
+        markup+=`<defs><clipPath id="history-positive"><rect x="${left}" y="${top}" width="${right-left}" height="${zero-top}"/></clipPath><clipPath id="history-negative"><rect x="${left}" y="${zero}" width="${right-left}" height="${bottom-zero}"/></clipPath></defs>
+          <path d="${path}" fill="none" stroke="#61e4aa" stroke-width="2" clip-path="url(#history-positive)"/><path d="${path}" fill="none" stroke="#ff7979" stroke-width="2" clip-path="url(#history-negative)"/>`;
+      } else markup+=`<path d="${path}" fill="none" stroke="#7ab6ff" stroke-width="2"/>`;
+      for(const run of runs) if(run.length===1) {
+        const r=run[0], color=key==='watts'?(r.watts>0?'#61e4aa':r.watts<0?'#ff7979':'#93a6b8'):'#7ab6ff';
+        markup+=`<circle cx="${number(x(r.time))}" cy="${number(y(r[key]))}" r="3" fill="${color}" stroke="${r.complete?color:'#ffd23f'}" stroke-width="1.5"/>`;
+      }
+      if(!model.validCount)markup+='<text x="460" y="100" fill="#a9bbca" font-size="16" text-anchor="middle">No valid readings recorded for this day</text>';
+      markup+=`<line id="${key==='watts'?'history-power-cursor':'history-soc-cursor'}" x1="${left}" x2="${left}" y1="${top}" y2="${bottom}" stroke="#cfdae6" stroke-dasharray="3 4" visibility="hidden" pointer-events="none"/>`;
+      svg.innerHTML=markup;
+      svg.onpointermove = event => {
+        const box=svg.getBoundingClientRect(), position=(event.clientX-box.left)/box.width*900;
+        const time=model.start+(Math.max(left,Math.min(right,position))-left)/(right-left)*(model.end-model.start);
+        inspectHistory(model,time);
+      };
+      svg.onpointerdown=svg.onpointermove;
+      svg.onkeydown=event=>{
+        if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+        event.preventDefault();
+        const count=Math.round((model.end-model.start)/60000);
+        historyCursor=event.key==='Home'?0:event.key==='End'?count-1:Math.max(0,Math.min(count-1,historyCursor+(event.key==='ArrowRight'?1:-1)));
+        inspectHistory(model,model.start+historyCursor*60000);
+      };
+    }
+    function inspectHistory(model,time) {
+      const count=Math.round((model.end-model.start)/60000);
+      historyCursor=Math.max(0,Math.min(count-1,Math.floor((time-model.start)/60000)));
+      const at=model.start+historyCursor*60000, row=model.byTime.get(at);
+      const x=65+(at+30000-model.start)/(model.end-model.start)*815;
+      for(const id of ['history-power-cursor','history-soc-cursor']) {
+        $(id).setAttribute('x1',x.toFixed(2));$(id).setAttribute('x2',x.toFixed(2));$(id).setAttribute('visibility','visible');
+      }
+      $('history-hover').textContent=historyTime(at)+' · '+(!row?'No record':!row.valid?'Missing readings':
+        `${(row.watts/1000).toFixed(2)} kW · ${row.soc.toFixed(1)}% SOC · ${row.coverage.toFixed(1)} s covered · ${row.quality.replaceAll('_',' ')}`);
+    }
+    function renderHistoryGraphs(model) {
+      historyModel=model;historyCursor=0;
+      const energy=model.validCount?`${(model.chargedWh/1000).toFixed(3)} kWh charged / ${(model.dischargedWh/1000).toFixed(3)} kWh discharged`:'No measured energy';
+      $('history-summary').textContent=`${model.date} · Recorded energy: ${energy} · ${(model.coverage/3600).toFixed(2)} h covered in a ${(model.end-model.start)/3600000} h day · ${model.partialCount} partial / ${model.missingCount} missing rows`+
+        (model.invalid?` · ${model.invalid} invalid rows skipped`:'')+(model.duplicates?` · ${model.duplicates} duplicate minutes replaced`:'');
+      renderHistoryPlot(model,'watts');renderHistoryPlot(model,'soc');
+      if(model.rows.length)inspectHistory(model,model.rows.find(r=>r.valid)?.time ?? model.rows[0].time);
+    }
     let sdState = null;
     let sdRequestPending = false;
     let sdDownloadActive = false;
@@ -87,12 +426,14 @@
       $('sd-erase-confirm').disabled = !!busy || !sdState.mounted;
       $('sd-erase').disabled = !!busy || !sdState.mounted || $('sd-erase-confirm').value !== 'ERASE';
       $('sd-download').disabled = !!busy || !sdState.mounted;
+      $('history-load').disabled = !!busy || !sdState.mounted;
+      $('history-date').disabled = sdDownloadActive;
     }
     function receiveSd(data) {
       let state; try { state = JSON.parse(data.state); } catch (_) { return; }
       if (!Array.isArray(state.files)) return;
       if (!sdState || state.revision !== sdState.revision) sdRequestPending = false;
-      sdState = state; sdPanel.hidden = false;
+      sdState = state; sdPanel.hidden = false; graphPanel.hidden = false;
       $('sd-status').textContent = (state.busy ? 'Working… ' : '') + String(state.message || '') +
         (state.mounted ? ` · ${Number(state.capacity_mb || 0).toLocaleString()} MiB card` : '') +
         (state.truncated ? ' · Listing limited to the first 32 entries or size limit' : '');
@@ -142,10 +483,18 @@
     $('sd-erase').onclick = () => sdAction(false, true);
     $('sd-erase-cancel').onclick = () => { $('sd-erase-confirm').value = ''; updateSdButtons(); };
     $('sd-log-date').value = michiganDate(Date.now());
-    $('sd-download').onclick = async () => {
+    async function loadDailyCsv(date, graph = false) {
       if (!sdState || !sdState.mounted || sdState.busy || sdRequestPending || sdDownloadActive || !transport) return;
-      const date = $('sd-log-date').value;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { $('sd-download-status').textContent = 'Choose a date.'; return; }
+      const status = $(graph?'history-load-status':'sd-download-status');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { status.textContent = 'Choose a date.'; return; }
+      if(graph) {
+        historyModel=null;
+        for(const id of ['history-power','history-soc']) {
+          const svg=$(id);svg.innerHTML='';svg.onpointermove=null;svg.onpointerdown=null;svg.onkeydown=null;
+        }
+        $('history-summary').textContent='';$('history-hover').textContent='';
+      }
+      status.textContent='Loading '+date+'…';
       sdDownloadActive = true; updateSdButtons();
       const token = Date.now().toString(16) + Math.floor(Math.random()*0xffffffff).toString(16);
       const parts = []; let offset = 0, limit = null;
@@ -173,16 +522,24 @@
           if (!chunk.data.length || chunk.size < limit) throw new Error('CSV changed during download. Try again.');
           const part = chunk.data.slice(0, limit-offset);
           parts.push(part); offset += part.length;
-          $('sd-download-status').textContent = `Downloading ${date}: ${offset.toLocaleString()} / ${limit.toLocaleString()} bytes`;
+          status.textContent = `Loading ${date}: ${offset.toLocaleString()} / ${limit.toLocaleString()} bytes`;
         }
-        const url = URL.createObjectURL(new Blob(parts, {type:'text/csv;charset=utf-8'}));
-        const link = document.createElement('a'); link.href = url; link.download = 'PawPower-' + date + '.csv';
-        document.body.appendChild(link); link.click(); link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        $('sd-download-status').textContent = 'Downloaded PawPower-' + date + '.csv';
-      } catch (error) { $('sd-download-status').textContent = 'Download failed: ' + error.message; }
+        if(graph) {
+          renderHistoryGraphs(parseMinuteHistory(parts.join(''),date));
+          status.textContent='Loaded '+date+' · Snapshot from SD card';
+        } else {
+          const url = URL.createObjectURL(new Blob(parts, {type:'text/csv;charset=utf-8'}));
+          const link = document.createElement('a'); link.href = url; link.download = 'PawPower-' + date + '.csv';
+          document.body.appendChild(link); link.click(); link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          status.textContent = 'Downloaded PawPower-' + date + '.csv';
+        }
+      } catch (error) { status.textContent = (graph?'Graph load failed: ':'Download failed: ') + error.message; }
       finally { sdDownloadActive = false; updateSdButtons(); }
-    };
+    }
+    $('sd-download').onclick = () => loadDailyCsv($('sd-log-date').value);
+    $('history-date').value = michiganDate(Date.now());
+    $('history-load').onclick = () => loadDailyCsv($('history-date').value,true);
     let seasonDate = '';
     setInterval(() => renderSeason(), 60000);
     function renderSeason() {
@@ -341,6 +698,7 @@
       webTickAt=now;
     }
     function webLost() {
+      clearTraffic();
       tickWeb();
       if (webWasLive && !webActive) {
         webActive=true;webHistory.lastStart=Date.now();webHistory.lastDuration=0;webHistory.interrupted=false;
@@ -384,6 +742,7 @@
     function receive(data) {
       const raw = decodeURIComponent(String(data.name_id || data.id || data.name || '')).toLowerCase();
       const normalized = raw.replace(/[^a-z0-9]+/g,'_');
+      if (normalized.endsWith('bus_traffic_activity')) {receiveTraffic(data);return;}
       if (normalized.endsWith('sd_card_diagnostics')) {receiveSd(data);return;}
       if (normalized.endsWith('battery_settings_state')) {receiveSettings(data);return;}
       if (normalized.endsWith('can_output_status')) {
