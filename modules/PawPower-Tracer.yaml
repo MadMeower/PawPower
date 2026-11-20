@@ -1,0 +1,309 @@
+# Solar Guardian listener or direct polling with explicit manual charging controls.
+packages:
+  cloud: !include cloud_upload/tracer.yaml
+substitutions:
+  name: pawpower-tracer
+  friendly_name: Paw Power Tracer
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - lambda: pawcommon::setup_web_assets();
+      - lambda: pawtracer::bus().mode(id(tracer_mode).current_option() == "Poll - no dongle");
+  includes:
+    - pawpower_common
+    - <pawpower_common/web_assets.h>
+    - tracer_shared/tracer_bus.h
+    - tracer_shared/energy_tracker.h
+    - tracer_shared/solar_peaks.h
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+preferences:
+  flash_write_interval: 5s
+time:
+  - platform: sntp
+    id: tracer_clock
+    timezone: America/Detroit
+globals:
+  - id: tracer_peak_store
+    type: std::array<uint8_t, 1024>
+    restore_value: true
+    initial_value: "std::array<uint8_t, 1024>{}"
+    update_interval: 5min
+  - id: tracer_energy_store
+    type: std::array<uint8_t, 1536>
+    restore_value: true
+    initial_value: "std::array<uint8_t, 1536>{}"
+    update_interval: 5min
+logger:
+  level: DEBUG
+  baud_rate: 0
+api:
+  encryption:
+    key: !secret tracer_api_key
+  reboot_timeout: 0s
+ota:
+  - platform: esphome
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+web_server:
+  port: 80
+  version: 2
+  js_url: ""
+  css_url: ""
+  js_include: tracer_shared/dashboard.js
+  log: false
+  auth:
+    type: digest
+    username: !secret paw_web_username
+    password: !secret paw_web_password
+# UART hardware holds driver enable LOW except during an explicit write.
+uart:
+  id: tracer_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO18
+  flow_control_pin: GPIO21
+  baud_rate: 115200
+  stop_bits: 1
+  parity: NONE
+  rx_buffer_size: 1024
+select:
+  - platform: template
+    name: Tracer Connection Mode
+    id: tracer_mode
+    optimistic: true
+    restore_value: true
+    initial_option: Listen - Solar Guardian
+    options:
+      - Listen - Solar Guardian
+      - Poll - no dongle
+    set_action:
+      - lambda: |-
+          pawtracer::bus().mode(x == "Poll - no dongle");
+          ESP_LOGI("tracer", "Mode: %s", x.c_str());
+# First boot listens. Later boots restore the selected connection mode.
+button:
+  - platform: template
+    name: Tracer Charging On
+    on_press:
+      - lambda: pawtracer::bus().request_charge(true, millis());
+  - platform: template
+    name: Tracer Charging Off
+    on_press:
+      - lambda: pawtracer::bus().request_charge(false, millis());
+interval:
+  - interval: 10ms
+    then:
+      - lambda: |-
+          uint8_t byte;
+          unsigned budget = 512;
+          while (budget-- && id(tracer_uart).available()) {
+            if (id(tracer_uart).read_byte(&byte)) pawtracer::bus().feed(byte, millis());
+          }
+          auto request = pawtracer::bus().poll(millis());
+          if (!request.empty()) id(tracer_uart).write_array(request.data(), request.size());
+  - interval: 1s
+    then:
+      - lambda: |-
+          auto &b = pawtracer::bus();
+          static std::array<uint32_t, pawtracer::Bus::COUNT> published{};
+          if (published[pawtracer::Bus::PV_V] != b.revisions[pawtracer::Bus::PV_V]) {
+            published[pawtracer::Bus::PV_V] = b.revisions[pawtracer::Bus::PV_V];
+            id(pv_voltage).publish_state(b.values[pawtracer::Bus::PV_V]);
+          }
+          if (published[pawtracer::Bus::PV_A] != b.revisions[pawtracer::Bus::PV_A]) {
+            published[pawtracer::Bus::PV_A] = b.revisions[pawtracer::Bus::PV_A];
+            { auto t = id(tracer_clock).now(); if (t.is_valid()) pawtracer::peak(id(tracer_peak_store), t.timestamp, 1, b.values[pawtracer::Bus::PV_A]); }
+            id(pv_current).publish_state(b.values[pawtracer::Bus::PV_A]);
+          }
+          if (published[pawtracer::Bus::PV_W] != b.revisions[pawtracer::Bus::PV_W]) {
+            published[pawtracer::Bus::PV_W] = b.revisions[pawtracer::Bus::PV_W];
+            { auto t = id(tracer_clock).now(); if (t.is_valid()) pawtracer::peak(id(tracer_peak_store), t.timestamp, 0, b.values[pawtracer::Bus::PV_W]); }
+            id(pv_power).publish_state(b.values[pawtracer::Bus::PV_W]);
+            auto t = id(tracer_clock).now();
+            const float watts = b.values[pawtracer::Bus::PV_W];
+            paw::record_energy(id(tracer_energy_store), millis(), t.timestamp,
+                              t.is_valid(), watts >= 0 && watts <= 15000 ? watts : NAN);
+          }
+          if (published[pawtracer::Bus::BAT_V] != b.revisions[pawtracer::Bus::BAT_V]) {
+            published[pawtracer::Bus::BAT_V] = b.revisions[pawtracer::Bus::BAT_V];
+            id(battery_voltage).publish_state(b.values[pawtracer::Bus::BAT_V]);
+          }
+          if (published[pawtracer::Bus::BAT_A] != b.revisions[pawtracer::Bus::BAT_A]) {
+            published[pawtracer::Bus::BAT_A] = b.revisions[pawtracer::Bus::BAT_A];
+            { auto t = id(tracer_clock).now(); if (t.is_valid()) pawtracer::peak(id(tracer_peak_store), t.timestamp, 2, b.values[pawtracer::Bus::BAT_A]); }
+            id(battery_current).publish_state(b.values[pawtracer::Bus::BAT_A]);
+          }
+          if (published[pawtracer::Bus::BAT_T] != b.revisions[pawtracer::Bus::BAT_T]) {
+            published[pawtracer::Bus::BAT_T] = b.revisions[pawtracer::Bus::BAT_T];
+            id(battery_temperature).publish_state(b.values[pawtracer::Bus::BAT_T]);
+          }
+          if (published[pawtracer::Bus::CTRL_T] != b.revisions[pawtracer::Bus::CTRL_T]) {
+            published[pawtracer::Bus::CTRL_T] = b.revisions[pawtracer::Bus::CTRL_T];
+            { auto t = id(tracer_clock).now(); if (t.is_valid()) pawtracer::peak(id(tracer_peak_store), t.timestamp, 3, b.values[pawtracer::Bus::CTRL_T]); }
+            id(controller_temperature).publish_state(b.values[pawtracer::Bus::CTRL_T]);
+          }
+          if (published[pawtracer::Bus::SOC] != b.revisions[pawtracer::Bus::SOC]) {
+            published[pawtracer::Bus::SOC] = b.revisions[pawtracer::Bus::SOC];
+            id(controller_soc).publish_state(b.values[pawtracer::Bus::SOC]);
+          }
+          if (published[pawtracer::Bus::CURRENT_LOW] != b.revisions[pawtracer::Bus::CURRENT_LOW]) {
+            published[pawtracer::Bus::CURRENT_LOW] = b.revisions[pawtracer::Bus::CURRENT_LOW];
+            id(current_low).publish_state(b.values[pawtracer::Bus::CURRENT_LOW]);
+          }
+sensor:
+  - platform: template
+    id: pv_voltage
+    name: "PV Voltage"
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "PV Voltage Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::PV_V, millis());
+  - platform: template
+    id: pv_current
+    name: "PV Current"
+    unit_of_measurement: "A"
+    device_class: current
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "PV Current Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::PV_A, millis());
+  - platform: template
+    id: pv_power
+    name: "PV Power"
+    unit_of_measurement: "W"
+    device_class: power
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "PV Power Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::PV_W, millis());
+  - platform: template
+    id: battery_voltage
+    name: "Battery Voltage"
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "Battery Voltage Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::BAT_V, millis());
+  - platform: template
+    id: battery_current
+    name: "Battery Current"
+    unit_of_measurement: "A"
+    device_class: current
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "Battery Current Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::BAT_A, millis());
+  - platform: template
+    id: battery_temperature
+    name: "Battery Temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "Battery Temperature Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::BAT_T, millis());
+  - platform: template
+    id: controller_temperature
+    name: "Controller Temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "Controller Temperature Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::CTRL_T, millis());
+  - platform: template
+    id: controller_soc
+    name: "Controller SOC"
+    unit_of_measurement: "%"
+    device_class: battery
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "Controller SOC Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::SOC, millis());
+  - platform: template
+    id: current_low
+    name: "Battery Current Low Word"
+    unit_of_measurement: "A"
+    device_class: current
+    accuracy_decimals: 2
+    update_interval: never
+  - platform: template
+    name: "Battery Current Low Word Age"
+    unit_of_measurement: s
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().age(pawtracer::Bus::CURRENT_LOW, millis());
+  - platform: template
+    name: Matched Replies
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return pawtracer::bus().matched;
+text_sensor:
+  - platform: template
+    name: Tracer Charge Control
+    update_interval: 1s
+    lambda: return pawtracer::bus().charge_json(millis());
+  - platform: template
+    name: Tracer Status
+    update_interval: 5s
+    lambda: |-
+      auto &b = pawtracer::bus();
+      float age = b.age(pawtracer::Bus::PV_W, millis());
+      if (std::isnan(age)) return {"Waiting for solar power reply"};
+      if (age > 120) return {"Solar power stale - check dongle/connection"};
+      return b.polling ? std::string("Direct polling") : std::string("Listening to Solar Guardian");
+
+  - platform: template
+    name: Tracer Dashboard State
+    id: tracer_dashboard_state
+    update_interval: 2s
+    lambda: return pawtracer::bus().dashboard(millis());
+
+  - platform: template
+    name: Solar Energy History
+    id: solar_energy_history
+    update_interval: 15s
+    lambda: |-
+      auto t = id(tracer_clock).now();
+      return pawtracer::history(id(tracer_energy_store), id(tracer_peak_store), t.timestamp, t.is_valid());

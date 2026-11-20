@@ -1,0 +1,152 @@
+substitutions:
+  cloud_device_token: !secret pawpower_upload_token
+  cloud_server_url: !secret pawpower_server_url
+# Outbound HTTPS runs on a low-priority FreeRTOS task, not the ESPHome loop.
+esphome:
+  includes:
+    # Explicit headers keep shunt-only controls out of Tracer builds.
+    - cloud_upload/cloud_payload.h
+    - cloud_upload/cloud_uploader.h
+    - cloud_upload/battery_control.h
+    - pawpower_common/web_assets.h
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: |-
+            pawcommon::setup_web_assets();
+            pawcloud::uploader().set_uploads_enabled(id(paw_cloud_uploads_enabled).state);
+            pawcloud::uploader().start(
+                "${cloud_server_url}/api.php?action=upload&device=pawpower",
+                "${cloud_device_token}");
+esp32:
+  framework:
+    advanced:
+      include_builtin_idf_components:
+        - esp_http_client
+    sdkconfig_options:
+      CONFIG_MBEDTLS_CERTIFICATE_BUNDLE: y
+      CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL: y
+json:
+switch:
+  - platform: template
+    id: paw_cloud_uploads_enabled
+    name: Cloud Uploads
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - lambda: pawcloud::uploader().set_uploads_enabled(true);
+    turn_off_action:
+      - lambda: pawcloud::uploader().set_uploads_enabled(false);
+# Server is the source of truth for notification rules shared with Android.
+# This command entity is not restored: an old write must never replay after a reboot.
+text:
+  - platform: template
+    name: Notification Preferences Request
+    id: paw_notification_preferences_request
+    entity_category: config
+    mode: text
+    min_length: 1
+    max_length: 255
+    optimistic: true
+    set_action:
+      - lambda: pawcloud::uploader().request_configuration(x);
+button:
+  - platform: template
+    name: Cloud Test Notification
+    on_press:
+      - lambda: |-
+          pawcloud::uploader().start(
+              "${cloud_server_url}/api.php?action=upload&device=pawpower",
+              "${cloud_device_token}");
+          pawcloud::uploader().request_test();
+text_sensor:
+  - platform: template
+    name: Cloud History Status
+    update_interval: 10s
+    lambda: return std::string(pawcloud::uploader().history_status());
+  - platform: template
+    name: Notification Preferences State
+    update_interval: 1s
+    lambda: return pawcloud::uploader().configuration();
+  - platform: template
+    name: Automatic Alert Status
+    update_interval: 10s
+    lambda: return std::string(pawcloud::uploader().alert_status());
+  - platform: template
+    name: Cloud Test Status
+    update_interval: 1s
+    lambda: return pawcloud::uploader().test_status();
+  - platform: template
+    name: Cloud Upload Status
+    update_interval: 10s
+    lambda: return std::string(pawcloud::uploader().status());
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          pawcloud::battery_control().receive(pawcloud::uploader().take_battery_command());
+  - interval: 30s
+    startup_delay: 20s
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: paw_cloud_uploads_enabled
+              - wifi.connected:
+              - lambda: return id(battery_clock).now().is_valid();
+          then:
+            - lambda: |-
+                if (!pawcloud::uploader().start(
+                    "${cloud_server_url}/api.php?action=upload&device=pawpower",
+                    "${cloud_device_token}")) return;
+                pawcloud::uploader().report_battery(pawcloud::battery_control().report());
+                const auto ms = millis();
+                const bool fresh = pawcloud::fresh(
+                    id(have_shunt_reply), id(last_shunt_reply), ms, 15000);
+                pawcloud::Payload body;
+                body.number("battery_voltage", id(battery_voltage).state, fresh, 0, 1000);
+                body.number("battery_current", id(battery_current).state, fresh, -2000, 2000);
+                body.number("battery_soc", id(battery_soc).state, fresh, 0, 100);
+                body.number("battery_temperature_c", id(battery_temperature).state, fresh, -100, 150);
+                // Daily integrals are observed energy and can represent partial days.
+                auto clock = id(battery_clock).now();
+                static paw::EnergyStore store{};
+                paw::load_energy_into(store, id(battery_energy_store));
+                const auto *day = paw::find(store, paw::date_key(clock.timestamp));
+                body.number("charge_kwh_today", day ? day->charged_wh / 1000.0 : NAN,
+                    day != nullptr, 0, 10000);
+                body.number("discharge_kwh_today", day ? day->discharged_wh / 1000.0 : NAN,
+                    day != nullptr, 0, 10000);
+                // Backfill one previous day alongside today, without touching bridge/protection state.
+                static unsigned history_day = 1;
+                static paw::PeakStore peak_store{};
+                paw::load_peaks_into(peak_store, id(battery_peak_store));
+                const std::string ledger = esphome::json::build_json([&](JsonObject root) {
+                  auto days = root["days"].to<JsonArray>();
+                  for (unsigned index : {0U, history_day}) {
+                    const auto &saved = store.days[index];
+                    if (!saved.date) continue;
+                    auto row = days.add<JsonObject>();
+                    char date[12];
+                    snprintf(date, sizeof(date), "%04d-%02d-%02d", int(saved.date / 10000), int(saved.date / 100 % 100), int(saved.date % 100));
+                    row["date"] = date; row["charge_kwh"] = saved.charged_wh / 1000.0;
+                    row["discharge_kwh"] = saved.discharged_wh / 1000.0;
+                    row["seconds"] = saved.seconds; row["partial"] = saved.partial;
+                    auto peak = row["peaks"].to<JsonObject>();
+                    if (const auto *p = paw::find_peak(peak_store, saved.date)) {
+                      peak["charge_watts"] = p->charge_w; peak["discharge_watts"] = p->discharge_w;
+                      peak["charge_amps"] = p->charge_a; peak["discharge_amps"] = p->discharge_a;
+                    }
+                  }
+                });
+                history_day = history_day % 30 + 1;
+                // The builder wrapper is removed; only the bounded array crosses the worker queue.
+                const auto begin = ledger.find('['), end = ledger.rfind(']');
+                const auto standard = body.finish();
+                body.number("battery_capacity_ah", paw::settings_store().get().v[paw::CAPACITY], fresh, 1, 10000);
+                body.number("battery_remaining_ah", id(battery_remaining_ah).state, fresh, 0, 10000);
+                body.number("shunt_remaining_minutes", id(shunt_remaining_time).state, fresh, 0, 525600);
+                pawcloud::uploader().submit(standard, begin != std::string::npos && end != std::string::npos ?
+                    ledger.substr(begin, end - begin + 1) : "[]", body.finish());

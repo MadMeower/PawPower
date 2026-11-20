@@ -1,0 +1,18 @@
+# Original non-display board. Uses DHCP; preserve existing identity when upgrading.
+substitutions:
+  name: pawpower
+  friendly_name: Paw Power
+  rs485_tx_pin: '17'
+  rs485_rx_pin: '18'
+  can_tx_pin: '15'
+  can_rx_pin: '16'
+packages:
+  common: !include 'pawpower_shared/core.yaml'
+uart:
+  id: rs485_bus
+  flow_control_pin: GPIO21
+
+# Device-specific key; shared core retains the common API settings.
+api:
+  encryption:
+    key: !secret pawpower_api_key

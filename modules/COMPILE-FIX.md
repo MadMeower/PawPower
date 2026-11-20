@@ -1,0 +1,1 @@
+Fixed unsupported HTTPD_503_SERVICE_UNAVAILABLE enum by explicitly setting HTTP 503 status and sending a text response. Backup busy/error behavior unchanged. No CAN or battery settings changes. Full hardware compile still required.

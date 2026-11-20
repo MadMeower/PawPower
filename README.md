@@ -1,3 +1,11 @@
+# Current three-board firmware
+
+The latest reviewed firmware for the original shunt board, LCD display board and Tracer is in **[modules/](modules/README.md)**. It includes the shared code, local webpages, history, charging controls and optional cloud support. Public configurations use DHCP and a dummy secrets template; cloud uploads default Off. Keep your real secrets and local network settings private.
+
+This snapshot preserves the older branch layout below for reference. Use the module entry files and shared folders together when installing the latest firmware.
+
+---
+
 # Paw Power — non-display ESP32-S3
 
 Standalone WonVon/Junctek RS485 battery monitor and Pylontech-style CAN bridge. Home Assistant is not required.

@@ -1,0 +1,109 @@
+# Display-only SD diagnostics, minute CSV recording and confirmed file erasure.
+output:
+- platform: gpio
+  id: pp_sd_select
+  pin:
+    ch422g: panel_io
+    number: 4
+    mode: OUTPUT
+
+esphome:
+  includes:
+  - <pawpower_shared/sd_diagnostics.h>
+  on_boot:
+  - priority: -210
+    then:
+    - output.turn_off: pp_sd_select
+    - lambda: |-
+        paw::sd_diagnostics().setup();
+        paw::setup_history_zip();
+
+esp32:
+  framework:
+    advanced:
+      include_builtin_idf_components:
+      - fatfs
+      - sdmmc
+      - esp_driver_sdspi
+      - esp_driver_spi
+    sdkconfig_options:
+      # ESP-IDF gates opendir/readdir/stat AND unlink behind this option.
+      CONFIG_VFS_SUPPORT_DIR: "y"
+      CONFIG_FATFS_LFN_HEAP: "y"
+      CONFIG_FATFS_API_ENCODING_UTF_8: "y"
+
+text_sensor:
+- platform: template
+  id: pp_sd_diagnostics
+  name: SD Card Diagnostics
+  update_interval: 1s
+  lambda: |-
+    static std::string previous;
+    auto current = paw::sd_diagnostics().json();
+    if (current == previous) return {};
+    previous = current;
+    return current;
+
+text:
+- platform: template
+  name: SD Log Read
+  id: pp_sd_log_read
+  mode: text
+  min_length: 14
+  max_length: 64
+  optimistic: false
+  set_action:
+  - lambda: paw::sd_diagnostics().request_export(x);
+- platform: template
+  name: SD Card Erase
+  id: pp_sd_erase
+  mode: text
+  min_length: 5
+  max_length: 5
+  optimistic: false
+  set_action:
+  - lambda: |-
+      paw::sd_diagnostics().request_erase(x);
+
+button:
+- platform: template
+  name: SD Card Refresh
+  on_press:
+  - lambda: paw::sd_diagnostics().request(false);
+- platform: template
+  name: SD Card Write Test
+  on_press:
+  - lambda: paw::sd_diagnostics().request(true);
+
+interval:
+- interval: 100ms
+  then:
+  - lambda: |-
+      static uint32_t completed=0;
+      const auto revision=paw::sd_diagnostics().completed_revision();
+      if(revision!=completed){completed=revision;id(pp_sd_diagnostics).update();}
+- interval: 1s
+  then:
+  - lambda: |-
+      static paw::MinuteHistory history;
+      paw::MinuteRecord row;
+      auto now = id(battery_clock).now();
+      if (history.tick(millis(), now.timestamp, now.is_valid(), id(have_shunt_reply),
+          id(last_shunt_reply), id(battery_voltage).state, id(battery_current).state,
+          id(battery_soc).state, row, id(battery_temperature).state)) paw::sd_diagnostics().record(row);
+
+# Read-only event observer; all filesystem writes run on the SD worker.
+- interval: 1s
+  then:
+  - lambda: |-
+      static paw::EventHistory events;
+      const auto ms=millis();
+      auto now=id(battery_clock).now();
+      const bool fresh=id(have_shunt_reply) && uint32_t(ms-id(last_shunt_reply))<15000;
+      const bool ready=paw::pylon_control().ready(ms);
+      const auto plan=paw::pylon_control().plan();
+      const auto output=paw::pylon_transport().permissions(ms,id(can_bench_output).state);
+      events.tick(ms,now.timestamp,now.is_valid(),fresh,ready,
+        id(can_bench_output).state,output.active,plan.charge_allowed,plan.discharge_allowed,
+        plan.soc_hold,plan.cold_hold,plan.hot_hold,bool(plan.protection&0x04),
+        [](const paw::EventRecord &event){paw::sd_diagnostics().event(event);});
