@@ -217,11 +217,18 @@
       <canvas id="pong-court" width="640" height="320" tabindex="0" role="img" aria-label="Paw Ball court. You control the left paddle; Donut controls the right."
         style="display:block;width:100%;max-width:640px;aspect-ratio:2;background:#091820;border:1px solid #38775c;border-radius:12px;touch-action:none">Paw Ball requires a browser with canvas support.</canvas>
       <div class="settings-actions"><button id="pong-play" type="button">Start game</button><button id="pong-reset" type="button">New game</button><button id="pong-sound" type="button" aria-pressed="true">Sound: on</button></div>
-      <p class="note">A little fun while the batteries charge.</p>`;
+      <label style="display:block;margin:12px 0">Game speed: <output id="pong-speed-label">1.0×</output><input id="pong-speed" type="range" min="1" max="3" step="0.25" value="1" aria-label="Paw Ball game speed" style="display:block;width:100%;max-width:400px"></label><p class="note">1× Relaxed · 2× Fast · 3× Wild</p><p class="note">A little fun while the batteries charge.</p>`;
     document.querySelector('main').insertBefore(panel,document.querySelector('footer'));
     const canvas=panel.querySelector('canvas'),ctx=canvas.getContext('2d');
     const play=panel.querySelector('#pong-play'),reset=panel.querySelector('#pong-reset'),score=panel.querySelector('#pong-score');
     const soundButton=panel.querySelector('#pong-sound'),audio=createPongAudio(window);
+    const speedControl=panel.querySelector('#pong-speed'),speedLabel=panel.querySelector('#pong-speed-label');
+    let gameSpeed=1;
+    try{const saved=Number(localStorage.getItem('paw-ball-speed'));if(Number.isFinite(saved)&&saved>=1&&saved<=3)gameSpeed=saved;}catch(_){}
+    const showSpeed=()=>{speedControl.value=String(gameSpeed);speedLabel.textContent=gameSpeed.toFixed(2).replace(/0$/,'')+'×';};
+    showSpeed();
+    speedControl.oninput=()=>{const value=Number(speedControl.value);if(!Number.isFinite(value))return;gameSpeed=Math.max(1,Math.min(3,value));showSpeed();try{localStorage.setItem('paw-ball-speed',String(gameSpeed));}catch(_){}};
+
     if(!audio.available){soundButton.disabled=true;soundButton.textContent='Sound unavailable';soundButton.setAttribute('aria-pressed','false');}
     soundButton.onclick=()=>{
       audio.setEnabled(!audio.enabled);soundButton.textContent=audio.enabled?'Sound: on':'Sound: off';
@@ -247,7 +254,7 @@
     function pause(silence=true){running=false;cancelAnimationFrame(frame);frame=0;keys.clear();if(silence)audio.stop();play.textContent=state.winner?'Play again':'Resume game';draw();}
     function tick(now){
       if(!running)return;
-      const elapsed=Math.min(Math.max((now-last)/1000,0),0.05);last=now;
+      const elapsed=Math.min(Math.max((now-last)/1000,0),0.05)*gameSpeed;last=now;
       // Small steps prevent fast balls crossing a paddle between frames.
       const steps=Math.max(1,Math.ceil(elapsed/0.008)),dt=elapsed/steps;
       for(let i=0;i<steps;i++){
@@ -363,7 +370,7 @@
       @media(max-width:650px){main{padding:24px 16px}header{align-items:center;gap:12px}.header-title{order:3;flex-basis:100%}.settings-grid{grid-template-columns:1fr}.hero{grid-template-columns:1fr;padding:25px;gap:22px}.ring{width:225px;height:225px}.grid{grid-template-columns:repeat(2,1fr)}.energy-grid{grid-template-columns:repeat(2,1fr)}.energy-heading{flex-direction:column}.card{padding:20px}.value{font-size:25px}footer{flex-direction:column}.big{font-size:36px}}
     `;
     document.head.append(style);
-    document.body.innerHTML = `<main><header><div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" role="img" aria-label="Paw Power logo"><rect x="1" y="1" width="62" height="62" rx="18" fill="#153c31" stroke="#38775c"/><g fill="#64e5b0"><ellipse cx="16" cy="27" rx="5" ry="7" transform="rotate(-25 16 27)"/><ellipse cx="26" cy="18" rx="5" ry="7" transform="rotate(-10 26 18)"/><ellipse cx="39" cy="18" rx="5" ry="7" transform="rotate(10 39 18)"/><ellipse cx="49" cy="27" rx="5" ry="7" transform="rotate(25 49 27)"/><path d="M20 39c4-4 6-10 12-10s8 6 12 10c8 9 2 17-6 14-4-2-8-2-12 0-8 3-14-5-6-14z"/></g><path d="M34 32l-9 13h7l-2 9 11-15h-8z" fill="#123128"/></svg><div class="eyebrow">PAW POWER</div></div><div class="header-title"><h1>Battery monitor</h1><p id="bank-description">48V bank · Junctek shunt</p></div><div id="status" role="status">Connecting…</div></header>
+    document.body.innerHTML = `<main><header><div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" role="img" aria-label="Paw Power logo"><rect x="1" y="1" width="62" height="62" rx="18" fill="#153c31" stroke="#38775c"/><g fill="#64e5b0"><ellipse cx="16" cy="27" rx="5" ry="7" transform="rotate(-25 16 27)"/><ellipse cx="26" cy="18" rx="5" ry="7" transform="rotate(-10 26 18)"/><ellipse cx="39" cy="18" rx="5" ry="7" transform="rotate(10 39 18)"/><ellipse cx="49" cy="27" rx="5" ry="7" transform="rotate(25 49 27)"/><path d="M20 39c4-4 6-10 12-10s8 6 12 10c8 9 2 17-6 14-4-2-8-2-12 0-8 3-14-5-6-14z"/></g><path d="M34 32l-9 13h7l-2 9 11-15h-8z" fill="#123128"/></svg><div class="eyebrow">PAW POWER</div></div><div class="header-title"><h1>Battery monitor</h1><p id="bank-description">51.2V bank · Junctek shunt</p></div><div id="status" role="status">Connecting…</div></header>
       <section class="panel hero"><div class="soc-column"><div class="ring" role="img" aria-label="Battery state of charge"><svg viewBox="0 0 240 240" aria-hidden="true"><circle class="track" cx="120" cy="120" r="100"/><circle id="arc" cx="120" cy="120" r="100" stroke-dasharray="0 628.319"/></svg><div class="center"><div class="percent"><span id="soc">—</span><small>%</small></div><span class="caption">STATE OF CHARGE</span></div></div></div>
       <div><div id="mode">Waiting for shunt</div><div class="big"><span id="hero-power">—</span> <small>W</small></div><p id="flow">Battery power</p><div class="bar"><div id="fill"></div></div><div class="labels"><span id="remaining-label">— Ah remaining</span><span id="total-capacity">— Ah total</span></div><div class="runtime"><div class="label">SHUNT ESTIMATE</div><strong id="shunt-runtime">—</strong><p id="shunt-empty-time">Waiting for shunt estimate</p><div id="runtime-label" class="label" style="margin-top:12px">SMOOTHED ESTIMATE</div><strong id="runtime">—</strong><p id="empty-time">Waiting for discharge readings</p><div class="label" style="margin-top:12px">TIME TO FULL</div><strong id="time-full">—</strong><p id="full-time">Waiting for charge readings</p><p>Steady-rate estimates. Cutoff or charge taper may change timing.</p></div></div></section>
       <section class="grid"><article class="panel card"><div class="label">BATTERY VOLTAGE</div><div class="value"><span id="volts">—</span> <small>V</small></div><div class="note">Measured at shunt</div></article>
@@ -374,7 +381,7 @@
       <article class="panel card"><div class="label">DATA AGE</div><div class="value"><span id="age">—</span> <small>s</small></div><div class="note">Since last valid shunt reply</div></article></section>
       <section class="panel energy-panel"><div class="energy-heading">Battery energy<span id="energy-state">Waiting for device clock</span></div><div class="energy-grid"><div><div class="label">TODAY · CHARGED</div><div class="energy-number in"><span id="today-in">—</span> <small>kWh</small></div><div class="peak in" id="today-in-peak">Peak — W · — A</div></div><div><div class="label">TODAY · DISCHARGED</div><div class="energy-number out"><span id="today-out">—</span> <small>kWh</small></div><div class="peak out" id="today-out-peak">Peak — W · — A</div></div><div><div class="label">YESTERDAY · CHARGED</div><div class="energy-number in"><span id="yesterday-in">—</span> <small>kWh</small></div><div class="peak in" id="yesterday-in-peak">Peak — W · — A</div></div><div><div class="label">YESTERDAY · DISCHARGED</div><div class="energy-number out"><span id="yesterday-out">—</span> <small>kWh</small></div><div class="peak out" id="yesterday-out-peak">Peak — W · — A</div></div></div><div class="note" style="margin-top:12px"><strong>Equivalent cycles: <span id="cycle-count">—</span></strong> · <span id="cycle-ah">— Ah discharged</span><br><span id="cycle-details">Waiting for cycle history. Counts begin with this feature.</span></div><details class="history"><summary>Previous 30 days · Michigan time</summary><div class="history-scroll"><table><thead><tr><th>Date</th><th>Charged kWh</th><th>Discharged kWh</th><th>Peak +W</th><th>Peak −W</th><th>Peak +A</th><th>Peak −A</th><th>Coverage</th></tr></thead><tbody id="energy-history"></tbody></table></div><p class="note">Partial = started mid-day, restarted, or missed readings. These are battery totals, not total house use. Peaks are independent maxima from 5-second samples, recorded since this feature was installed; brief spikes may be missed.</p></details></section>
       <section class="panel season-panel" aria-label="Chasing the Sun seasonal cycle"><svg class="season-dial" viewBox="-26 -8 152 116" role="img" aria-label="Annual daylight cycle clockwise: Winter, Spring, Summer, Fall"><circle class="season-track" cx="50" cy="50" r="32"/><text x="50" y="10" text-anchor="middle">SUMMER</text><text x="50" y="98" text-anchor="middle">WINTER</text><text x="8" y="53" text-anchor="end">SPRING</text><text x="92" y="53" text-anchor="start">FALL</text><circle id="season-marker" class="season-dot" cx="50" cy="82" r="5"/></svg><div class="season-info"><div class="season-title">Chasing the Sun</div><div id="season-count" class="season-count">Waiting for date…</div><div id="season-direction" class="season-direction"></div><div class="season-note">Northern hemisphere · Calendar guide: Jun 21 / Dec 21 · Not a solar forecast</div></div></section>
-      <details class="history"><summary>Disconnects · Shunt <span id="shunt-drops">—</span> / Webpage <span id="web-drops">0</span> today</summary><p class="note" id="shunt-last-drop">Shunt: waiting for history</p><p class="note" id="web-last-drop">Webpage: no drops recorded</p><div class="history-scroll"><table><thead><tr><th>Date</th><th>Shunt drops</th><th>Offline</th><th>Webpage drops</th><th>Offline</th></tr></thead><tbody id="disconnect-history"></tbody></table></div><p class="note">Shunt: no valid reply for 20 seconds. Webpage: event-stream error or 15 seconds without events. Each outage counts once. Webpage records belong to this browser; closed-page time and ESP32 downtime are not measured. Michigan dates.</p></details><details class="history"><summary>CAN output · Pylontech</summary><p class="note">500 kbps · Pylontech · <span id="can-state">Waiting for state</span></p><p class="note" id="can-output-status">Waiting for CAN status</p><button id="can-toggle" type="button">Enable CAN output</button><p class="note">Enables after 3 fresh shunt replies. Pauses on stale data and resumes automatically. Last on/off choice is saved. <span id="can-soc-rules">SOC rules: waiting for settings.</span></p></details><details class="history" id="battery-settings"><summary>Battery settings · Saved on device</summary><p class="note">48V LiFePO₄ profiles only. Match these limits to your battery and inverter specifications. Editing does nothing until Apply saves the complete profile. First installation or protection upgrade requires a reviewed Apply before CAN can run. Existing inverter limits still apply.</p><form id="settings-form"><fieldset id="settings-fields" disabled style="border:0;padding:0;margin:0"><div class="settings-grid" id="settings-grid"></div><div class="settings-actions"><button type="submit" id="settings-apply">Apply &amp; save to flash</button><button type="button" id="settings-reload">Reload saved values</button></div></fieldset></form><p id="settings-message" role="status" aria-live="polite">Waiting for device settings…</p><p class="note">SOC is calculated from remaining Ah / configured capacity. This does not recalibrate or reprogram the Junctek shunt. A 100% SOC stop still requires suitable voltage limits. Hold voltage is advertised while charging is disabled; it is not an active float stage. Current limits are bank totals, not per battery. Temperature protection blocks charging only. At startup or after rejected/stale readings, each enabled protection must reach its resume threshold. Place the probe on a representative battery.</p></details><details class="history"><summary>Device memory</summary><p class="note">Free heap: <span id="heap-free">—</span> KiB · Largest free block: <span id="heap-block">—</span> KiB · Max loop interval: <span id="loop-ms">—</span> ms</p><p class="note">Live working memory, not firmware size or CPU utilization. Bluetooth disabled.</p></details><footer><span>Local monitor · Refreshes every 5 seconds</span><span id="updated">Waiting for live data</span></footer></main>`;
+      <details class="history"><summary>Disconnects · Shunt <span id="shunt-drops">—</span> / Webpage <span id="web-drops">0</span> today</summary><p class="note" id="shunt-last-drop">Shunt: waiting for history</p><p class="note" id="web-last-drop">Webpage: no drops recorded</p><div class="history-scroll"><table><thead><tr><th>Date</th><th>Shunt drops</th><th>Offline</th><th>Webpage drops</th><th>Offline</th></tr></thead><tbody id="disconnect-history"></tbody></table></div><p class="note">Shunt: no valid reply for 20 seconds. Webpage: event-stream error or 15 seconds without events. Each outage counts once. Webpage records belong to this browser; closed-page time and ESP32 downtime are not measured. Michigan dates.</p></details><details class="history"><summary>CAN output · Pylontech</summary><p class="note">500 kbps · Pylontech · <span id="can-state">Waiting for state</span></p><p class="note" id="can-output-status">Waiting for CAN status</p><button id="can-toggle" type="button">Enable CAN output</button><p class="note">Enables after 3 fresh shunt replies. Pauses on stale data and resumes automatically. Last on/off choice is saved. <span id="can-soc-rules">SOC rules: waiting for settings.</span></p></details><details class="history" id="battery-settings"><summary>Battery settings · Saved on device</summary><p class="note">48V LiFePO₄ profiles only. Match these limits to your battery and inverter specifications. Editing does nothing until Apply saves the complete profile. First installation or protection upgrade requires a reviewed Apply before CAN can run. Existing inverter limits still apply.</p><form id="settings-form"><fieldset id="settings-fields" disabled style="border:0;padding:0;margin:0"><div class="settings-grid" id="settings-grid"></div><div class="settings-actions"><button type="submit" id="settings-apply">Apply &amp; save to flash</button><button type="button" id="settings-reload">Reload saved values</button></div></fieldset></form><p id="settings-message" role="status" aria-live="polite">Waiting for device settings…</p><p class="note">SOC is calculated from remaining Ah / configured capacity. This does not recalibrate or reprogram the Junctek shunt. A 100% SOC stop still requires suitable voltage limits. Hold voltage is advertised while charging is disabled; it is not an active float stage. Current limits are bank totals, not per battery. Temperature protection blocks charging only. At startup or after rejected/stale readings, each enabled protection must reach its resume threshold. Place the probe on a representative battery.</p></details><details class="history"><summary>Device memory</summary><p class="note">Free heap: <span id="heap-free">—</span> KiB · Largest free block: <span id="heap-block">—</span> KiB · Max loop interval: <span id="loop-ms">—</span> ms</p><p class="note">Live working memory, not firmware size or CPU utilization. Bluetooth disabled.</p></details><footer><span>Local monitor · Refreshes every 5 seconds</span><span id="updated">Waiting for live data</span><small>Shunt webpage · v2026.11.22.1</small></footer></main>`;
     const $ = id => document.getElementById(id);
     // Reuse the header paw as a self-contained browser-tab icon.
     const tabPaw=document.querySelector('.brand-mark').cloneNode(true);
@@ -404,9 +411,13 @@
     canSection.style.marginTop='18px';
     preferences.appendChild(canSection);
     const receiveFinishCharge=mountFinishCharge(preferences);
-    import('/paw/common.js?v=5').then(() => {
+    import('/paw/common.js?v=7').then(() => {
+      const errorRoot=document.createElement('section');
+      document.querySelector('main').insertBefore(errorRoot,document.querySelector('main > footer'));
+      globalThis.PawPowerCommon.mountErrorLog(errorRoot,'PawPower-Shunt');
       globalThis.PawPowerCommon.mountDevicePreferences(preferences);
       globalThis.PawPowerCommon.mountAlertPreferences(preferences);
+      globalThis.PawPowerCommon.mountEquipmentPreferences(preferences,'pawpower');
       globalThis.PawPowerCommon.mountNotificationTest();
     }).catch(() => {
       const message = document.createElement('p');
@@ -1056,7 +1067,7 @@
     function receiveSettings(data){
       let next;try{next=settingsFromEvent(data);}catch(_){return;}
       settingsActive=next;capacity=next.values[0];
-      $('bank-description').textContent=`48V bank · Junctek shunt · ${capacity.toLocaleString()}Ah`;
+      $('bank-description').textContent=`51.2V bank · Junctek shunt · ${capacity.toLocaleString()}Ah`;
       $('total-capacity').textContent=`${capacity.toLocaleString()} Ah total`;
       $('can-soc-rules').textContent=`Charging SOC hold: stop ${next.values[1]}%, resume ${next.values[2]}%. Discharge SOC: stop ${next.values[16]}%, resume ${next.values[17]}%. Cold protection: ${next.values[10] ? `stop ≤${next.values[11]}°F, resume ≥${next.values[12]}°F` : 'disabled'}. Hot protection: ${next.values[13] ? `stop ≥${next.values[14]}°F, resume ≤${next.values[15]}°F` : 'disabled'}.`;
       if(!settingsPending){
@@ -1117,7 +1128,7 @@
       finally { $('can-toggle').disabled = false; }
     };
     const values = {};
-    let historyPayload = null, historyAt = 0;
+    let historyPayload = null, historyAt = 0, historyBusy = false, historyError = false;
     let averageDischarge = null, averageCharge = null, lastCurrentAt = 0, previousCharging = false;
     let transport = false, lastTransport = 0, ageReceived = 0, ageAt = 0, hasAge = false;
     let stream=null, connectionAt=0, retryAt=0, retryDelay=2000;
@@ -1270,7 +1281,8 @@
     function renderEnergy() {
       const history = historyPayload;
       renderTreats(history);
-      if (!history || !history.clock) { $('energy-state').textContent = 'Waiting for device clock'; return; }
+      if (!history) { $('energy-state').textContent = historyError ? 'History unavailable · retrying' : 'Loading daily totals…'; return; }
+      if (!history.clock) { $('energy-state').textContent = 'Waiting for device clock'; return; }
       const days = history.days;
       function number(i,field) { return days[i] && !days[i].missing && Number.isFinite(days[i][field]) ? days[i][field].toFixed(2) : '—'; }
       $('today-in').textContent=number(0,'in');$('today-out').textContent=number(0,'out');
@@ -1286,8 +1298,8 @@
         $(label+'-out-peak').textContent=`Peak ${peakValue(day,1,'−',0)} W · ${peakValue(day,3,'−',1)} A`;
       });
       const age=hasAge ? ageReceived+(Date.now()-ageAt)/1000 : NaN;
-      const stale = !transport || Date.now()-historyAt>30000 || !(age>=0 && age<20);
-      $('energy-state').textContent=stale?'Saved totals · Monitoring paused':days[0]?.partial?'Today partial · Counts on ESP32':'Live · Counts on ESP32';
+      const stale = !transport || Date.now()-historyAt>75000 || !(age>=0 && age<20);
+      $('energy-state').textContent=historyError?'Saved totals · History unavailable · retrying':stale?'Saved totals · Monitoring paused':days[0]?.partial?'Today partial · Counts on ESP32':'Live · Counts on ESP32';
       const body=$('energy-history');body.textContent='';
       days.slice(1,31).forEach(day=>{
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date)) return;
@@ -1424,7 +1436,25 @@
       if(retryAt && now>=retryAt)connect();
       render();
     }
-    connect();setInterval(connectionTick,1000);render();
+    async function readEnergyHistory() {
+      if(historyBusy || document.hidden)return;
+      historyBusy=true;
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);
+      try {
+        const response=await fetch('/paw/energy-history',{cache:'no-store',credentials:'same-origin',signal:controller.signal});
+        if(!response.ok)throw Error('History unavailable');
+        const history=await response.json();
+        if(!history || typeof history.clock!=='boolean' || !Array.isArray(history.days) || history.days.length>31)throw Error('Invalid history');
+        for(const day of history.days) {
+          if(!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || (!day.missing && !['in','out','hours'].every(k=>Number.isFinite(day[k]))))throw Error('Invalid history day');
+        }
+        historyPayload=history;historyAt=Date.now();historyError=false;
+      } catch(_) {historyError=true;}
+      finally {clearTimeout(timer);historyBusy=false;renderEnergy();}
+    }
+    connect();setInterval(connectionTick,1000);setInterval(readEnergyHistory,30000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)readEnergyHistory();});
+    readEnergyHistory();render();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();

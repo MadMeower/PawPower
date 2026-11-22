@@ -1,0 +1,78 @@
+# Uses a dedicated namespace inside the existing NVS partition; no partition change.
+json:
+esphome:
+  includes:
+    - tracer_shared/minute_archive_model.h
+    - tracer_shared/minute_archive.h
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: pawtracer::minute_archive().setup();
+  on_shutdown:
+    then:
+      - lambda: pawtracer::minute_archive().shutdown();
+text:
+  - platform: template
+    name: Tracer Log Read
+    entity_category: diagnostic
+    mode: text
+    min_length: 14
+    max_length: 64
+    optimistic: true
+    set_action:
+      - lambda: |-
+          const auto now=id(tracer_clock).now();
+          uint32_t date=0,from=0,until=0,oldest=0;
+          if(now.is_valid()) {
+            oldest=paw::day_start(now.timestamp,-6);
+            for(int i=0;i<7;++i) {
+              const time_t start=paw::day_start(now.timestamp,-i);tm local{};
+              localtime_r(&start,&local);char label[16];
+              std::strftime(label,sizeof(label),"%Y-%m-%d",&local);
+              if(x.compare(0,10,label)==0) {
+                date=paw::date_key(start);from=start;until=paw::day_start(now.timestamp,1-i);break;
+              }
+            }
+          }
+          pawtracer::minute_archive().request(x,now.is_valid()?now.timestamp:0,date,from,until,oldest);
+text_sensor:
+  - platform: template
+    name: Tracer Archive State
+    id: tracer_archive_state
+    entity_category: diagnostic
+    update_interval: 5s
+    lambda: |-
+      auto value=pawtracer::minute_archive().status();
+      if(id(tracer_archive_state).has_state()&&id(tracer_archive_state).state==value)return {};
+      return value;
+  - platform: template
+    name: Tracer Log Page
+    id: tracer_log_page
+    entity_category: diagnostic
+    update_interval: 100ms
+    lambda: |-
+      auto value=pawtracer::minute_archive().result();
+      if(value.empty()) {
+        if(id(tracer_log_page).has_state())return {};
+        return std::string("{\"waiting\":true}");
+      }
+      return value;
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          const auto now=id(tracer_clock).now();
+          pawtracer::minute_archive().setup();
+          pawtracer::minute_archive().clock(now.is_valid());
+          const auto state=pawtracer::minute_archive().state_code();
+          pawdiag::history().observe(9,35,state==1?0:state,state>0);
+  - interval: 60s
+    startup_delay: 15s
+    then:
+      - lambda: |-
+          const auto now=id(tracer_clock).now();if(!now.is_valid())return;
+          const auto &bus=pawtracer::bus();const auto ms=millis();
+          std::array<float,7> values{},ages{};
+          for(unsigned i=0;i<7;++i){values[i]=bus.values[i];ages[i]=bus.age(i,ms);}
+          const auto row=pawtracer::archive_sample(now.timestamp,values,ages,bus.polling?20.0f:120.0f);
+          pawtracer::minute_archive().submit(row,paw::day_start(now.timestamp,-6));

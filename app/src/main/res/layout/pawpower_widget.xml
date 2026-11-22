@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:padding="4dp" android:background="@android:color/transparent">
+    <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+        android:layout_gravity="center" android:src="@drawable/widget_pawprint"
+        android:scaleType="fitCenter" android:alpha="0.35"
+        android:importantForAccessibility="no" android:contentDescription="@null" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:gravity="center">
+        <TextView android:id="@+id/widget_soc" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="3"
+            android:gravity="center" android:text="@string/widget_soc_placeholder" android:textColor="#64E5B0"
+            android:textSize="30sp" android:textStyle="bold" android:maxLines="1"
+            android:autoSizeTextType="uniform" android:autoSizeMinTextSize="10sp" android:autoSizeMaxTextSize="30sp" android:autoSizeStepGranularity="1sp"
+            android:shadowColor="#EE000000" android:shadowDx="0" android:shadowDy="1" android:shadowRadius="4" />
+        <TextView android:id="@+id/widget_watts" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="2"
+            android:gravity="center" android:text="@string/widget_watts_placeholder" android:textColor="#64E5B0"
+            android:textSize="20sp" android:maxLines="1"
+            android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp" android:autoSizeMaxTextSize="20sp" android:autoSizeStepGranularity="1sp"
+            android:shadowColor="#EE000000" android:shadowDx="0" android:shadowDy="1" android:shadowRadius="4" />
+    </LinearLayout>
+</FrameLayout>

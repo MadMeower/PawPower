@@ -81,6 +81,9 @@ image:
 esp32:
   flash_size: 16MB
   framework:
+    advanced:
+      # Generated Display setup alone uses 7392 bytes; leave room for callees.
+      loop_task_stack_size: 16384
     sdkconfig_options:
       # RGB bounce buffering benefits from 64-byte data cache lines.
       CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"

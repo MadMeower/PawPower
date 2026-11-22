@@ -1,0 +1,24 @@
+# Local fault history and one-minute reading archive; independent of cloud support.
+packages:
+  error_log: !include ../pawpower_common/error_log.yaml
+  reading_archive: !include reading_archive.yaml
+substitutions:
+  error_log_clock: tracer_clock
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          auto &b=pawtracer::bus();auto &log=pawdiag::history();
+          const uint32_t now=millis();
+          const auto age=b.age(pawtracer::Bus::PV_V,now);
+          log.observe(1,22,!std::isfinite(age)||age>(b.polling?20.0f:120.0f),std::isfinite(age)||now>150000U);
+          const uint16_t status=b.raw_status();
+          const uint16_t faults=(status&0x3fd2)|(((status>>14)&3)>=2?(status&0xc000):0);
+          log.observe(2,20,faults,b.status_fresh(now));
+          log.counter(0,24,b.exceptions,now);
+          static uint32_t logged_command=0;
+          const auto command=b.charge_command();
+          if(b.charge_sequence()!=logged_command && command>=pawtracer::Bus::ACKNOWLEDGED) {
+            log.event(26,(static_cast<uint16_t>(command)<<8)|b.charge_exception());
+            logged_command=b.charge_sequence();
+          }

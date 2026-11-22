@@ -1,4 +1,6 @@
 # Shared battery bridge: edit once for both boards.
+packages:
+  error_log: !include ../pawpower_common/error_log.yaml
 ota:
 - platform: esphome
 safe_mode: null
@@ -130,6 +132,15 @@ web_server:
 interval:
 - interval: 1s
   then:
+  - lambda: |-
+      auto &log=pawdiag::history();
+      const bool fresh=id(have_shunt_reply) && uint32_t(millis()-id(last_shunt_reply))<15000U;
+      log.observe(1,12,fresh?0:1,id(have_shunt_reply)||millis()>30000U);
+      const auto status=paw::pylon_transport().status();
+      const auto fault=paw::can_fault_code(status);
+      log.observe(2,10,fault,id(can_bench_output).state && (fault!=0 || status.rfind("Active:",0)==0));
+- interval: 1s
+  then:
   - lambda: "auto now = id(battery_clock).now();\npaw::disconnect_tracker().tick(id(battery_disconnect_store), millis(),\n\
       \  now.timestamp, now.is_valid(), id(have_shunt_reply), id(last_shunt_reply));"
 - interval: 1s
@@ -249,7 +260,7 @@ text_sensor:
   update_interval: 10s
   lambda: 'auto now = id(battery_clock).now();
 
-    return paw::energy_json(id(battery_energy_store), id(battery_peak_store), now.timestamp, now.is_valid());'
+    return pawcommon::cache_energy_history(paw::energy_json(id(battery_energy_store), id(battery_peak_store), now.timestamp, now.is_valid()));'
 - platform: template
   name: Connection History
   id: battery_connection_history
@@ -282,10 +293,12 @@ esphome:
   includes:
   - pawpower_shared
   - <pawpower_shared/bridge.h>
+  - pawpower_common/web_assets.h
   on_boot:
   - priority: -100
     then:
     - lambda: !lambda |-
+        pawcommon::setup_web_assets();
         paw::settings_store().setup();
         paw::pylon_transport().setup(static_cast<gpio_num_t>(${can_tx_pin}), static_cast<gpio_num_t>(${can_rx_pin}));
   on_loop:

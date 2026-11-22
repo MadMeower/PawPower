@@ -1,4 +1,8 @@
-# Current three-board firmware
+# PawPower source and fallback checkpoint
+
+Current Android app source is in **[app/](ANDROID.md)**, device firmware is in **[modules/](modules/README.md)**, and optional server companion code is in **[server/](server/README.md)**. See **[CHECKPOINT.md](CHECKPOINT.md)** for the November 22 fallback and **[NEXT-REVISION.md](NEXT-REVISION.md)** for pending work. Public configurations use examples; supply your own private credentials.
+
+## Current three-board firmware
 
 The latest reviewed firmware for the original shunt board, LCD display board and Tracer is in **[modules/](modules/README.md)**. It includes the shared code, local webpages, history, charging controls and optional cloud support. Public configurations use DHCP and a dummy secrets template; cloud uploads default Off. Keep your real secrets and local network settings private.
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
+#include "preferences_fragments.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_timer.h"
@@ -18,6 +19,8 @@ class Uploader {
   enum Status { WAITING, QUEUED, ACCEPTED, NETWORK_ERROR, AUTH_ERROR, SERVER_ERROR, LOCAL_ERROR };
   enum TestStatus { READY, TEST_QUEUED, SENT, PARTIAL, COOLDOWN, DISABLED, NO_PHONE,
                     TEST_AUTH_ERROR, ENDPOINT_MISSING, TEST_NETWORK_ERROR, TEST_FAILED, SETUP_ERROR };
+  using ArchiveSource=std::string(*)();using ArchiveAccepted=void(*)();
+  void set_archive_source(ArchiveSource source,ArchiveAccepted accepted){archive_accepted_.store(accepted);archive_source_.store(source);}
   bool start(const char *url, const char *token) {
     if (!uploads_enabled_.load()) return false;
     if (queue_) return task_ != nullptr;
@@ -53,8 +56,15 @@ class Uploader {
         status_ = LOCAL_ERROR; return false;
       }
     }
+    equipment_requests_ = xQueueCreate(1, sizeof(ConfigMessage));
+    equipment_results_ = xQueueCreate(1, sizeof(ConfigMessage));
     queue_ = xQueueCreate(1, sizeof(Snapshot));
-    if (!queue_) {
+    if (!queue_ || !equipment_requests_ || !equipment_results_) {
+      if (queue_) vQueueDelete(queue_);
+      queue_ = nullptr;
+      if (equipment_requests_) vQueueDelete(equipment_requests_);
+      if (equipment_results_) vQueueDelete(equipment_results_);
+      equipment_requests_ = nullptr; equipment_results_ = nullptr;
       if (config_requests_) vQueueDelete(config_requests_);
       if (config_results_) vQueueDelete(config_results_);
       if (battery_requests_) vQueueDelete(battery_requests_);
@@ -65,6 +75,8 @@ class Uploader {
     }
     if (xTaskCreate(run, "paw_cloud", 12288, this, 1, &task_) != pdPASS) {
       vQueueDelete(queue_); queue_ = nullptr; task_ = nullptr;
+      vQueueDelete(equipment_requests_);vQueueDelete(equipment_results_);
+      equipment_requests_ = nullptr;equipment_results_ = nullptr;
       if (config_requests_) vQueueDelete(config_requests_);
       if (config_results_) vQueueDelete(config_results_);
       if (battery_requests_) vQueueDelete(battery_requests_);
@@ -84,16 +96,21 @@ class Uploader {
       if (config_results_) xQueueReset(config_results_);
       if (battery_requests_) xQueueReset(battery_requests_);
       if (battery_results_) xQueueReset(battery_results_);
+      if (equipment_requests_) xQueueReset(equipment_requests_);
+      if (equipment_results_) xQueueReset(equipment_results_);
+      equipment_cached_ = R"({"status":423})";
       test_pending_ = false;
       test_status_ = READY;
+      preferences_fragments_.clear();
       config_cached_ = "{\"status\":423}";
     }
   }
 
-  bool submit(const std::string &json, const std::string &days = "[]", const std::string &history_json = "") {
+  bool submit(const std::string &json, const std::string &days = "[]", const std::string &history_json = "", const std::string &equipment_json = "{}", const std::string &errors_json = "{}") {
     if (!uploads_enabled_.load()) return false;
     if (!queue_ || !task_ || json.size() >= sizeof(Snapshot::body)) return false;
-    if (history_json.size() >= sizeof(Snapshot::history_body)) return false;
+    if (history_json.size() >= sizeof(Snapshot::history_body) || equipment_json.size() >= sizeof(Snapshot::equipment)) return false;
+    if(errors_json.size()>=sizeof(Snapshot::errors))return false;
     // Dedicated loop/worker storage: never place multi-KiB queue packets on task stacks.
     auto &snapshot = loop_snapshot_;
     std::memset(&snapshot, 0, sizeof(snapshot));
@@ -101,6 +118,8 @@ class Uploader {
     std::memcpy(snapshot.history_body, history.c_str(), history.size() + 1);
     if (days.size() < sizeof(snapshot.days)) std::memcpy(snapshot.days, days.c_str(), days.size() + 1);
     else std::memcpy(snapshot.days, "[]", 3);
+    std::memcpy(snapshot.equipment, equipment_json.c_str(), equipment_json.size() + 1);
+    std::memcpy(snapshot.errors,errors_json.c_str(),errors_json.size()+1);
     snapshot.created_us = esp_timer_get_time();
     std::memcpy(snapshot.body, json.c_str(), json.size() + 1);
     status_ = QUEUED;
@@ -109,12 +128,20 @@ class Uploader {
 
   // Configuration crosses the same worker boundary as readings; no HTTP on the bus loop.
   void request_configuration(const std::string &body) {
-    if (!uploads_enabled_.load() || !config_requests_ || body.size() >= sizeof(ConfigMessage::body)) return;
+    if (!uploads_enabled_.load() || !config_requests_) return;
+    const auto part=preferences_fragments_.accept(body,esp_timer_get_time());
+    if(part==PreferencesFragments::PARTIAL)return;
+    if(part==PreferencesFragments::INVALID){
+      config_cached_="{\"sequence\":"+std::to_string(++config_sequence_)+",\"status\":400}";return;
+    }
+    const auto &request=part==PreferencesFragments::READY?preferences_fragments_.body():body;
+    if(request.size()>=sizeof(ConfigMessage::body))return;
     auto &message = loop_message_;
     std::memset(&message, 0, sizeof(message));
     message.sequence = ++config_sequence_;
-    std::memcpy(message.body, body.c_str(), body.size() + 1);
+    std::memcpy(message.body, request.c_str(), request.size() + 1);
     xQueueOverwrite(config_requests_, &message);
+    if(part==PreferencesFragments::READY)preferences_fragments_.clear();
   }
   std::string configuration() {
     if (!uploads_enabled_.load()) return "{\"status\":423}";
@@ -123,6 +150,18 @@ class Uploader {
     if (config_results_ && xQueueReceive(config_results_, &message, 0) == pdTRUE)
       config_cached_ = message.body;
     return config_cached_;
+  }
+  // Equipment preferences sync only after an explicit page read/save request.
+  void request_equipment_configuration(const std::string &body) {
+    if(!uploads_enabled_.load() || !equipment_requests_ || body.empty() || body.size()>=sizeof(ConfigMessage::body))return;
+    auto &m=loop_message_;std::memset(&m,0,sizeof(m));m.sequence=++equipment_sequence_;
+    std::memcpy(m.body,body.c_str(),body.size()+1);xQueueOverwrite(equipment_requests_,&m);
+  }
+  std::string equipment_configuration() {
+    if(!uploads_enabled_.load())return R"({"status":423})";
+    auto &m=loop_message_;
+    if(equipment_results_ && xQueueReceive(equipment_results_,&m,0)==pdTRUE)equipment_cached_=m.body;
+    return equipment_cached_;
   }
   void report_battery(const std::string &body) {
     if (!uploads_enabled_.load() || !battery_requests_ || body.size() >= sizeof(ConfigMessage::body)) return;
@@ -182,6 +221,12 @@ class Uploader {
     }
   }
 
+  uint16_t upload_diagnostic()const {
+    const auto s=status_.load()==LOCAL_ERROR?LOCAL_ERROR:last_upload_status_.load();
+    return s==ACCEPTED?0:s==NETWORK_ERROR?1:s==AUTH_ERROR?2:s==SERVER_ERROR?3:s==LOCAL_ERROR?4:65535;
+  }
+  int monitor_diagnostic()const{return alert_status_.load();}
+  int history_diagnostic()const{return history_status_.load();}
   std::string test_status() const {
     // Machine-readable status contains no credentials or server response body.
     return "{\"sequence\":" + std::to_string(test_sequence_.load()) +
@@ -189,22 +234,27 @@ class Uploader {
   }
 
  private:
-  struct Snapshot { int64_t created_us; char body[1024]; char days[1024]; char history_body[1024]; };
+  struct Snapshot { int64_t created_us; char body[1024]; char days[1024]; char history_body[1024]; char equipment[512]; char errors[2048]; };
   struct Reply { esp_err_t error; int status; std::string body; };
   struct ConfigMessage { uint32_t sequence; char body[2048]; };
   Snapshot loop_snapshot_{}, worker_snapshot_{};
   ConfigMessage loop_message_{}, worker_message_{}, worker_reply_{};
-  uint32_t config_sequence_ = 0;
+  PreferencesFragments preferences_fragments_;
+  uint32_t config_sequence_ = 0, equipment_sequence_ = 0;
+  QueueHandle_t equipment_requests_ = nullptr, equipment_results_ = nullptr;
+  std::string equipment_cached_ = R"({"status":0})";
   QueueHandle_t config_requests_ = nullptr, config_results_ = nullptr;
   QueueHandle_t battery_requests_ = nullptr, battery_results_ = nullptr;
   bool battery_ = false;
+  bool log_supported_ = false; // Negotiated with the existing history endpoint.
+  std::atomic<ArchiveSource> archive_source_{nullptr};std::atomic<ArchiveAccepted> archive_accepted_{nullptr};
   std::string config_cached_ = "{\"status\":0}";
   std::atomic<int> alert_status_{0};
   std::atomic<int> history_status_{0};
   QueueHandle_t queue_ = nullptr;
   TaskHandle_t task_ = nullptr;
   std::string url_, base_url_, test_url_, bearer_;
-  std::atomic<Status> status_{WAITING};
+  std::atomic<Status> status_{WAITING},last_upload_status_{WAITING};
   std::atomic<bool> uploads_enabled_{false};
   std::atomic<TestStatus> test_status_{READY};
   std::atomic<uint32_t> test_sequence_{0};
@@ -282,6 +332,17 @@ class Uploader {
     }
   }
 
+  void sync_equipment_configuration(const char *body,uint32_t sequence) {
+    const auto reply=send(base_url_+"/equipment-preferences.php?device="+(battery_?"pawpower":"tracer"),body,true,std::strcmp(body,"GET")==0);
+    bool valid=false;
+    if(reply.error==ESP_OK && reply.body.size()<1980)
+      valid=esphome::json::parse_json(reply.body,[](JsonObject root)->bool{return !root.isNull();});
+    const std::string result=std::string(R"({"sequence":)")+std::to_string(sequence)+
+      R"(,"status":)"+std::to_string(reply.error==ESP_OK?reply.status:503)+
+      R"(,"data":)"+(valid?reply.body:"{}")+"}";
+    auto &m=worker_reply_;std::memset(&m,0,sizeof(m));
+    if(result.size()<sizeof(m.body)){std::memcpy(m.body,result.c_str(),result.size()+1);xQueueOverwrite(equipment_results_,&m);}
+  }
   static void run(void *context) { static_cast<Uploader *>(context)->work(); }
   void work() {
     auto &snapshot = worker_snapshot_;
@@ -305,14 +366,18 @@ class Uploader {
           xQueueOverwrite(battery_results_,&config);
         }
       }
+      if(xQueueReceive(equipment_requests_,&config,0)==pdTRUE)sync_equipment_configuration(config.body,config.sequence);
       if (test_pending_.exchange(false)) send_test();
       if (xQueueReceive(queue_, &snapshot, pdMS_TO_TICKS(500)) != pdTRUE) continue;
       if (!uploads_enabled_.load() || esp_timer_get_time() - snapshot.created_us > 15000000LL) continue;
       const auto reply = send(url_, snapshot.body, false);
-      status_ = reply.error != ESP_OK ? NETWORK_ERROR :
+      const auto result = reply.error != ESP_OK ? NETWORK_ERROR :
           reply.status == 200 ? ACCEPTED : reply.status == 401 ? AUTH_ERROR : SERVER_ERROR;
-      if (battery_ && uploads_enabled_.load() && esp_timer_get_time() - snapshot.created_us <= 15000000LL) {
-        const auto alert = send(base_url_ + "/device-monitor.php", snapshot.body, false);
+      last_upload_status_=result;status_=result;
+      if (uploads_enabled_.load() && esp_timer_get_time() - snapshot.created_us <= 15000000LL) {
+        std::string monitor(snapshot.body);if(!monitor.empty())monitor.pop_back();
+        monitor += R"(,"equipment":)" + std::string(snapshot.equipment) + "}";
+        const auto alert = send(base_url_ + "/device-monitor.php?device=" + (battery_ ? "pawpower" : "tracer"), monitor.c_str(), false);
         alert_status_ = alert.error == ESP_OK && alert.status == 200 ? 1 :
             alert.status == 404 ? 2 : alert.status == 401 ? 3 : 4;
       }
@@ -321,8 +386,21 @@ class Uploader {
             (battery_ ? "pawpower" : "tracer");
         std::string history_body(snapshot.history_body);
         if (!history_body.empty()) history_body.pop_back();
-        history_body += ",\"days\":" + std::string(snapshot.days) + "}";
-        const auto history = send(history_url, history_body.c_str(), false);
+        history_body += ",\"days\":" + std::string(snapshot.days);
+        const auto provider=archive_source_.load();
+        const auto archive=log_supported_&&provider?provider():std::string{};
+        const bool logs=log_supported_&&(std::strlen(snapshot.errors)>2 || !archive.empty());
+        if(logs)history_body+=",\"logs\":{\"errors\":"+std::string(snapshot.errors)+
+          (archive.empty()?std::string{}:",\"archive\":"+archive)+"}";
+        history_body+="}";
+        const auto history = send(history_url, history_body.c_str(), true);
+        if(history.status==400||history.status==413)log_supported_=false;
+        if(history.error==ESP_OK&&history.status==200){
+          log_supported_=false;
+          bool accepted=false;
+          esphome::json::parse_json(history.body,[&](JsonObject root)->bool{log_supported_=root["logs_supported"].is<bool>()&&root["logs_supported"].as<bool>();accepted=root["logs"].is<bool>()&&root["logs"].as<bool>();return true;});
+          if(logs&&accepted&&!archive.empty())if(const auto ack=archive_accepted_.load())ack();
+        }
         history_status_ = history.error == ESP_OK && history.status == 200 ? 1 :
             history.status == 404 ? 2 : history.status == 401 ? 3 : 4;
       }

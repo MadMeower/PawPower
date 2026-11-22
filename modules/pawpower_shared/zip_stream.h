@@ -108,7 +108,8 @@ inline bool backup_date_valid(const std::string &d){
 }
 inline std::string backup_next_date(std::string d){
   int y=std::atoi(d.substr(0,4).c_str()),m=std::atoi(d.substr(5,2).c_str()),day=std::atoi(d.substr(8,2).c_str())+1;
-  char out[16];std::snprintf(out,sizeof(out),"%04d-%02d-%02d",y,m,day);
+  // Three unrestricted signed ints can require 36 bytes including separators and NUL.
+  char out[40];std::snprintf(out,sizeof(out),"%04d-%02d-%02d",y,m,day);
   if(!backup_date_valid(out)){day=1;if(++m>12){m=1;++y;}std::snprintf(out,sizeof(out),"%04d-%02d-%02d",y,m,day);}
   return out;
 }

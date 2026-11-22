@@ -1,0 +1,7 @@
+PawPower 1.1.17 (build 20)
+
+- Tall widget places SOC toward the top and watts toward the bottom.
+- Both widget sizes show watts without plus/minus signs. Green indicates charging, red discharging; stale readings remain gray.
+- Screen readers still announce the power direction.
+
+No server or ESP update needed. Install over the existing app; do not uninstall first.

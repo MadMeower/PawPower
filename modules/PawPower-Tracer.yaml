@@ -1,6 +1,7 @@
 # Solar Guardian listener or direct polling with explicit manual charging controls.
 packages:
   cloud: !include cloud_upload/tracer.yaml
+  diagnostics: !include tracer_shared/diagnostics.yaml
 substitutions:
   name: pawpower-tracer
   friendly_name: Paw Power Tracer

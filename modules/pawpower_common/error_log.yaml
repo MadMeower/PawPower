@@ -1,0 +1,44 @@
+# Local-only structured diagnostics. No server, raw console text or credentials.
+substitutions:
+  error_log_clock: battery_clock
+esphome:
+  includes:
+    - pawpower_common/error_history.h
+globals:
+  - id: error_history_store
+    type: std::array<uint8_t, 2048>
+    restore_value: true
+    initial_value: "std::array<uint8_t, 2048>{}"
+    update_interval: 5min
+text:
+  - platform: template
+    name: Error Log Read
+    entity_category: diagnostic
+    mode: text
+    min_length: 10
+    max_length: 64
+    optimistic: true
+    set_action:
+      - lambda: pawdiag::history().request(x);
+text_sensor:
+  - platform: template
+    name: Error Log State
+    id: error_log_state
+    entity_category: diagnostic
+    update_interval: 5s
+    lambda: |-
+      auto value=pawdiag::history().json();
+      if(id(error_log_state).has_state() && value==id(error_log_state).state)return {};
+      return value;
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          const auto now=id(${error_log_clock}).now();
+          const bool valid=now.is_valid();
+          auto &log=pawdiag::history();
+          log.tick(id(error_history_store),valid?now.timestamp:0,
+            valid?paw::date_key(now.timestamp):0,
+            valid?paw::date_key(paw::day_start(now.timestamp,-6)):0,
+            static_cast<uint16_t>(esp_reset_reason()));
+          log.observe(0,30,esphome::wifi::global_wifi_component->is_connected()?0:1);

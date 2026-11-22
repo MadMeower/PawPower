@@ -53,4 +53,4 @@ From this folder, run the Tracer browser checks with:
 
 The C++ files in tests cover decoder matching, energy integration and daily peaks. They use POSIX time helpers; run them in a compatible native environment. Shared webpage and hardware changes are coordinated: update the folders together.
 
-Public snapshot of local checkpoint 970a034. Private secrets, local LAN addressing, Device Builder data, build products and old archives are excluded. See the repository's LICENSE.
+Updated source checkpoint: fallback-2026-11-22-usb-power. Display uses the CAN baseline v3 sender and enlarged date buffers; see [checkpoint notes](../CHECKPOINT.md). The owner installed Display and observed clean CAN communication with the replacement USB power source. Public entry files retain DHCP and example secrets. Private secrets, local LAN addressing, Device Builder data, build products and old archives are excluded. See the repository's LICENSE.

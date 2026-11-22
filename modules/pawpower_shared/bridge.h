@@ -5,6 +5,7 @@
 #include "battery_settings.h"
 #include "pylon_can.h"
 #include "pylon_transport.h"
+#include "can_diagnostics.h"
 namespace paw {
 // Optional display hook. The bridge without a screen leaves this unset.
 using SettingsAppliedHook = void (*)();

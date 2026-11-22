@@ -23,6 +23,17 @@ class Bus {
       ",\"status\":"+(have_charge_status_?std::to_string(charge_status_):"null")+
       ",\"age\":"+(have_charge_status_?std::to_string(uint32_t(now-charge_status_at_)/1000.0f):"null")+"}";
   }
+  std::string equipment_json(uint32_t now) const {
+    const uint32_t limit=polling?20000U:120000U;
+    auto temperature=[&](Field field)->std::string {
+      return revisions[field] && uint32_t(now-stamps[field])<=limit && std::isfinite(values[field]) && values[field]>=-100 && values[field]<=150
+        ?std::to_string(values[field]):"null";
+    };
+    return std::string("{\"tracer_status\":")+
+      (have_charge_status_ && uint32_t(now-charge_status_at_)<=limit?std::to_string(charge_status_):"null")+
+      ",\"controller_temperature_c\":"+temperature(CTRL_T)+
+      ",\"battery_temperature_c\":"+temperature(BAT_T)+"}";
+  }
   std::string dashboard(uint32_t now) const {
     std::string out="{\"mode\":\"";
     out += polling ? "Poll - no dongle" : "Listen - Solar Guardian";
@@ -44,6 +55,10 @@ class Bus {
   }
   float age(size_t f,uint32_t now)const{return revisions[f]?float(uint32_t(now-stamps[f]))/1000.f:NAN;}
   ChargeCommand charge_command()const{return charge_command_;}
+  uint32_t charge_sequence()const{return charge_sequence_;}
+  uint8_t charge_exception()const{return charge_exception_;}
+  bool status_fresh(uint32_t now)const{return have_charge_status_ && uint32_t(now-charge_status_at_)<=(polling?20000U:120000U);}
+  uint16_t raw_status()const{return charge_status_;}
   bool request_charge(bool enabled,uint32_t now){
     // No boot writes, no commands in listener mode, and no hidden retry queue.
     if(charge_queued_ || (pending_ && fn_==5))return false;

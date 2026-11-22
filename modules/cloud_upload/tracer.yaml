@@ -6,11 +6,15 @@ esphome:
   includes:
     # Explicit headers keep shunt-only controls out of Tracer builds.
     - cloud_upload/cloud_payload.h
+    - cloud_upload/preferences_fragments.h
     - cloud_upload/cloud_uploader.h
+    - tracer_shared/archive_cloud_sync.h
   on_boot:
     - priority: -100
       then:
-        - lambda: pawcloud::uploader().set_uploads_enabled(id(paw_cloud_uploads_enabled).state);
+        - lambda: |-
+            pawcloud::uploader().set_archive_source(&pawtracer::archive_cloud_next,&pawtracer::archive_cloud_accepted);
+            pawcloud::uploader().set_uploads_enabled(id(paw_cloud_uploads_enabled).state);
 esp32:
   framework:
     advanced:
@@ -31,6 +35,21 @@ switch:
       - lambda: pawcloud::uploader().set_uploads_enabled(true);
     turn_off_action:
       - lambda: pawcloud::uploader().set_uploads_enabled(false);
+text:
+  - platform: template
+    name: Equipment Preferences Request
+    id: paw_equipment_preferences_request
+    entity_category: config
+    mode: text
+    min_length: 1
+    max_length: 255
+    optimistic: true
+    set_action:
+      - lambda: |-
+          pawcloud::uploader().start(
+              "${cloud_server_url}/api.php?action=upload&device=tracer",
+              "${cloud_device_token}");
+          pawcloud::uploader().request_equipment_configuration(x);
 button:
   - platform: template
     name: Cloud Test Notification
@@ -41,6 +60,10 @@ button:
               "${cloud_device_token}");
           pawcloud::uploader().request_test();
 text_sensor:
+  - platform: template
+    name: Equipment Preferences State
+    update_interval: 2s
+    lambda: return pawcloud::uploader().equipment_configuration();
   - platform: template
     name: Cloud History Status
     update_interval: 10s
@@ -55,6 +78,16 @@ text_sensor:
     lambda: return std::string(pawcloud::uploader().status());
 
 interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          if(!id(paw_cloud_uploads_enabled).state)return;
+          const auto &cloud=pawcloud::uploader();auto &log=pawdiag::history();
+          const auto upload=cloud.upload_diagnostic();
+          log.observe(6,32,upload,upload!=65535);
+          const auto monitor=cloud.monitor_diagnostic(),history=cloud.history_diagnostic();
+          log.observe(7,33,monitor==1?0:monitor,monitor!=0);
+          log.observe(8,34,history==1?0:history,history!=0);
   - interval: 30s
     startup_delay: 25s
     then:
@@ -66,6 +99,7 @@ interval:
               - lambda: return id(tracer_clock).now().is_valid();
           then:
             - lambda: |-
+                pawcloud::uploader().set_archive_source(&pawtracer::archive_cloud_next,&pawtracer::archive_cloud_accepted);
                 if (!pawcloud::uploader().start(
                     "${cloud_server_url}/api.php?action=upload&device=tracer",
                     "${cloud_device_token}")) return;
@@ -98,7 +132,7 @@ interval:
                     const auto &saved = store.days[index];
                     if (!saved.date) continue;
                     auto row = days.add<JsonObject>();
-                    char date[12];
+                    char date[32];  // Includes room for the full int formatting range.
                     snprintf(date, sizeof(date), "%04d-%02d-%02d", int(saved.date / 10000), int(saved.date / 100 % 100), int(saved.date % 100));
                     row["date"] = date; row["solar_kwh"] = saved.charged_wh / 1000.0;
                     row["seconds"] = saved.seconds; row["partial"] = saved.partial;
@@ -115,4 +149,5 @@ interval:
                 history_day = history_day % 30 + 1;
                 const auto begin = ledger.find('['), end = ledger.rfind(']');
                 pawcloud::uploader().submit(body.finish(), begin != std::string::npos && end != std::string::npos ?
-                    ledger.substr(begin, end - begin + 1) : "[]");
+                    ledger.substr(begin, end - begin + 1) : "[]", "", bus.equipment_json(now),
+                    pawdiag::history().cloud_json(paw::date_key(paw::day_start(clock.timestamp,-int(history_day%6+1)))));

@@ -1,0 +1,10 @@
+<resources>
+    <string name="widget_name">PawPower · Battery</string>
+    <string name="widget_description">Transparent battery SOC and net battery watts. Positive watts charge the battery; negative watts discharge it. Tap to open PawPower.</string>
+    <string name="widget_paw">PawPower</string>
+    <string name="widget_refresh">Refresh battery readings</string>
+    <string name="widget_soc_placeholder">—%</string>
+    <string name="widget_watts_placeholder">— W</string>
+    <string name="widget_solar_placeholder">Solar — W</string>
+    <string name="widget_waiting">Open app to connect</string>
+</resources>
