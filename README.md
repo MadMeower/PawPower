@@ -4,6 +4,8 @@ The latest reviewed firmware for the original shunt board, LCD display board and
 
 This snapshot preserves the older branch layout below for reference. Use the module entry files and shared folders together when installing the latest firmware.
 
+Optional cloud companion source and setup notes are in **[server/](server/README.md)**. Credentials and runtime data are not included; see the package status before deploying.
+
 ---
 
 # Paw Power — non-display ESP32-S3

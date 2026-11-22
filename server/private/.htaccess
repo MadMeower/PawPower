@@ -1,0 +1,2 @@
+# Defense in depth only. Deploy this entire directory outside every document root.
+Require all denied

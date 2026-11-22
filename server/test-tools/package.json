@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "description": "Local PHP 8.4 fixture test tools",
+  "dependencies": {
+    "@php-wasm/node": "3.1.65",
+    "@php-wasm/universal": "3.1.65",
+    "php-parser": "3.7.0"
+  }
+}
