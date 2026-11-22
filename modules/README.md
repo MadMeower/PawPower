@@ -41,6 +41,10 @@ Daily energy/peaks are recorded on the ESP even when the phone app is closed. Th
 
 Cloud snapshots remain every 30 seconds. Idle webpage polls are slower; Tracer pauses requests in hidden tabs. Fast local rendering timers and RS485/CAN traffic are separate from HTTP request counts.
 
+## Troubleshooting
+
+See [CAN troubleshooting](TROUBLESHOOTING.md), including a Display case where changing the USB power source stopped frequent CAN errors even though the LCD, Wi-Fi and incoming inverter heartbeats had appeared normal. Check power before repeatedly changing firmware; the note includes the test results and their limits.
+
 ## Validation
 Display and Tracer firmware compiled successfully for this checkpoint. Local webpage/command checks and history-copy checks passed. The reported task-stack overflow was addressed by moving large upload/settings packets off task stacks and keeping loop/worker buffers separate. Long-running physical stability and charging behavior still require on-device testing.
 
