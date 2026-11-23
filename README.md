@@ -1,6 +1,8 @@
 About:
 PawPower connects a Wonvon battery shunt to an EG4 6000XP inverter, translating battery readings from RS-485 into CAN communication. Available with or without a touchscreen, it provides local webpages for battery monitoring, settings, graphs, and daily energy totals.
+
 A separate Tracer module monitors an EPEVER Tracer solar charge controller over RS-485, including solar generation, charging status, temperatures, and history.
+
 Both modules work locally without a server. Optional server integration connects the Android app for remote monitoring and configurable push notifications.
 
 
